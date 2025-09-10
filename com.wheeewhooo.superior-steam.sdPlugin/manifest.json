@@ -1,0 +1,63 @@
+{
+	"Name": "Superior Steam",
+	"Version": "0.1.0.0",
+	"Author": "WheeeWhooo",
+	"Actions": [
+		{
+			"Name": "Counter",
+			"UUID": "com.wheeewhooo.superior-steam.increment",
+			"Icon": "imgs/actions/counter/icon",
+			"Tooltip": "Displays a count, which increments by one on press.",
+			"PropertyInspectorPath": "ui/increment-counter.html",
+			"Controllers": [
+				"Keypad"
+			],
+			"States": [
+				{
+					"Image": "imgs/actions/counter/key",
+					"TitleAlignment": "middle"
+				}
+			]
+		},
+		{
+			"Name": "Big picture",
+			"UUID": "com.wheeewhooo.superior-steam.big-picture",
+			"Icon": "imgs/actions/steam/x",
+			"Tooltip": "Manage Steam's Big Picture mode.",
+			"PropertyInspectorPath": "ui/increment-counter.html",
+			"Controllers": [
+				"Keypad"
+			],
+			"States": [
+				{
+					"Image": "imgs/actions/steam/deck_boot",
+					"TitleAlignment": "middle"
+				}
+			]
+		}
+	],
+	"Category": "Superior Steam",
+	"CategoryIcon": "imgs/plugin/category-icon",
+	"CodePath": "bin/plugin.js",
+	"Description": "Stream deck plugin to manage Steam",
+	"Icon": "imgs/plugin/marketplace",
+	"SDKVersion": 2,
+	"Software": {
+		"MinimumVersion": "6.5"
+	},
+	"OS": [
+		{
+			"Platform": "mac",
+			"MinimumVersion": "12"
+		},
+		{
+			"Platform": "windows",
+			"MinimumVersion": "10"
+		}
+	],
+	"Nodejs": {
+		"Version": "20",
+		"Debug": "--inspect=9229"
+	},
+	"UUID": "com.wheeewhooo.superior-steam"
+}
