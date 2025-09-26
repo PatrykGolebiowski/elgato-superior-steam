@@ -6,7 +6,7 @@ import path from "node:path";
 import url from "node:url";
 
 const isWatching = !!process.env.ROLLUP_WATCH;
-const sdPlugin = "com.wheeewhooo.superior-steam.sdPlugin";
+const sdPlugin = "com.humhunch.superior-steam.sdPlugin";
 
 /**
  * @type {import('rollup').RollupOptions}

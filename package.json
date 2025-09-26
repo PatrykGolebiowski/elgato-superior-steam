@@ -1,7 +1,7 @@
 {
     "scripts": {
         "build": "rollup -c",
-        "watch": "rollup -c -w --watch.onEnd=\"streamdeck restart com.wheeewhooo.superior-steam\""
+        "watch": "rollup -c -w --watch.onEnd=\"streamdeck restart com.humhunch.superior-steam\""
     },
     "type": "module",
     "devDependencies": {
@@ -17,6 +17,7 @@
         "typescript": "^5.2.2"
     },
     "dependencies": {
-        "@elgato/streamdeck": "^1.0.0"
+        "@elgato/streamdeck": "^1.0.0",
+        "@node-steam/vdf": "^2.2.0"
     }
 }

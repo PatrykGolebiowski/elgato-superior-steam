@@ -1,0 +1,87 @@
+{
+  "Name": "Superior Steam",
+  "Version": "0.1.0.0",
+  "Author": "humhunch",
+  "Actions": [
+    {
+      "Name": "Big picture",
+      "UUID": "com.humhunch.superior-steam.big-picture",
+      "Icon": "imgs/actions/steam/x",
+      "Tooltip": "Manage Steam's Big Picture mode.",
+      "PropertyInspectorPath": "ui/increment-counter.html",
+      "Controllers": ["Keypad"],
+      "States": [
+        {
+          "Image": "imgs/actions/steam/deck_boot",
+          "TitleAlignment": "middle"
+        }
+      ]
+    },
+    {
+      "Name": "Status",
+      "UUID": "com.humhunch.superior-steam.status",
+      "Icon": "imgs/actions/steam/y",
+      "Tooltip": "Manage Steam's status.",
+      "PropertyInspectorPath": "ui/increment-counter.html",
+      "Controllers": ["Keypad"],
+      "States": [
+        {
+          "Image": "imgs/actions/steam/y",
+          "TitleAlignment": "middle"
+        }
+      ]
+    },
+    {
+      "Name": "Run app",
+      "UUID": "com.humhunch.superior-steam.run-app",
+      "Icon": "imgs/actions/steam/y",
+      "Tooltip": "Installed Steam games.",
+      "PropertyInspectorPath": "ui/run-app.html",
+      "Controllers": ["Keypad"],
+      "States": [
+        {
+          "Image": "imgs/actions/steam/y",
+          "TitleAlignment": "middle"
+        }
+      ]
+    },
+    {
+      "Name": "Switch account",
+      "UUID": "com.humhunch.superior-steam.switch-account",
+      "Icon": "imgs/actions/steam/y",
+      "Tooltip": "Installed Steam games.",
+      "PropertyInspectorPath": "ui/switch-account.html",
+      "Controllers": ["Keypad"],
+      "States": [
+        {
+          "Image": "imgs/actions/steam/y",
+          "TitleAlignment": "middle"
+        }
+      ]
+    }
+  ],
+  "Category": "Superior Steam",
+  "CategoryIcon": "imgs/plugin/category-icon",
+  "CodePath": "bin/plugin.js",
+  "Description": "Stream deck plugin to manage Steam",
+  "Icon": "imgs/plugin/marketplace",
+  "SDKVersion": 2,
+  "Software": {
+    "MinimumVersion": "6.5"
+  },
+  "OS": [
+    {
+      "Platform": "mac",
+      "MinimumVersion": "12"
+    },
+    {
+      "Platform": "windows",
+      "MinimumVersion": "10"
+    }
+  ],
+  "Nodejs": {
+    "Version": "20",
+    "Debug": "--inspect=9229"
+  },
+  "UUID": "com.humhunch.superior-steam"
+}
