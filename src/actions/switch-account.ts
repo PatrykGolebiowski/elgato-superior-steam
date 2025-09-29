@@ -27,7 +27,7 @@ export class SwitchAccount extends SingletonAction<Settings> {
         }
 
         // Set the avatar image
-        await ev.action.setImage(user.avatarPng);
+        await ev.action.setImage(user.avatarBase64);
       }
     }
   }
