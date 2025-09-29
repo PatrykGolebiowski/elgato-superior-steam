@@ -81,7 +81,7 @@ class SteamLibrary {
     const vdfPath = `${steamPath}/steamapps/libraryfolders.vdf`;
     streamDeck.logger.trace(`${SteamLibrary.debugPrefix} Library config path: ${vdfPath}`);
 
-    const vdfFileContent = String(await this.powershell.getContent(vdfPath));
+    const vdfFileContent = String(await this.powershell.getContent({ path: vdfPath }));
     const parsedContent = VDF.parse(vdfFileContent) as Object;
 
     // Parse VDF structure to extract library folders
@@ -124,7 +124,7 @@ class SteamLibrary {
       const gamePromises = manifestFiles.map(async (manifest) => {
         const manifestPath = `${folder.path}\\${manifest.name}`;
 
-        const vdfContent = await this.powershell.getContent(manifestPath);
+        const vdfContent = await this.powershell.getContent({ path: manifestPath });
         const parsedContent = VDF.parse(String(vdfContent)) as any;
 
         // Parse VDF structure to extract game data
@@ -271,7 +271,7 @@ class SteamUsers {
     const vdfPath = `${steamPath}/config/loginusers.vdf`;
     streamDeck.logger.debug(`${SteamUsers.debugPrefix} Users config path: ${vdfPath}`);
 
-    const vdfFileContent = String(await this.powershell.getContent(vdfPath));
+    const vdfFileContent = String(await this.powershell.getContent({ path: vdfPath }));
     const parsedContent = VDF.parse(vdfFileContent) as Object;
 
     streamDeck.logger.trace(`${SteamUsers.debugPrefix} Parsed content: ${JSON.stringify(parsedContent)}`);
@@ -285,7 +285,7 @@ class SteamUsers {
           steamId64: steamId64,
           accountName: userEntry.AccountName || "",
           personaName: userEntry.PersonaName || "",
-          avatarPng: await this.getUserAvatar(steamPath, steamId64), // To be implemented: Fetch avatar URL via Steam Web API
+          avatarBase64: await this.getUserAvatar(steamPath, steamId64),
         };
         users.push(user);
       }
@@ -297,8 +297,9 @@ class SteamUsers {
 
   private async getUserAvatar(steamPath: string, steamId64: string): Promise<string> {
     const avatarPath = `${steamPath}/config/avatarcache/${steamId64}.png`;
+    const base64 = await this.powershell.getContentBase64({ path: avatarPath });
 
-    return avatarPath;
+    return `data:image/png;base64,${base64}`;
   }
 }
 
