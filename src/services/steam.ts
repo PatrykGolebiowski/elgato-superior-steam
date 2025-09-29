@@ -114,9 +114,9 @@ class SteamLibrary {
         path: folder.path,
         filter: "$_.Name -like 'appmanifest_*.acf'",
         properties: ["Name", "Mode"],
-      })
+      });
 
-      const manifestFiles = directoryContent.files
+      const manifestFiles = directoryContent.files;
 
       streamDeck.logger.debug(`${SteamLibrary.debugPrefix} Found ${manifestFiles.length} manifests in ${folder.path}`);
 
@@ -285,7 +285,7 @@ class SteamUsers {
           steamId64: steamId64,
           accountName: userEntry.AccountName || "",
           personaName: userEntry.PersonaName || "",
-          avatarUrl: "", // To be implemented: Fetch avatar URL via Steam Web API
+          avatarPng: await this.getUserAvatar(steamPath, steamId64), // To be implemented: Fetch avatar URL via Steam Web API
         };
         users.push(user);
       }
@@ -293,6 +293,12 @@ class SteamUsers {
 
     streamDeck.logger.debug(`${SteamUsers.debugPrefix} Found ${users.length} users`);
     return users;
+  }
+
+  private async getUserAvatar(steamPath: string, steamId64: string): Promise<string> {
+    const avatarPath = `${steamPath}/config/avatarcache/${steamId64}.png`;
+
+    return avatarPath;
   }
 }
 

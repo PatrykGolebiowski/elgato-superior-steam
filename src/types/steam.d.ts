@@ -29,5 +29,5 @@ type SteamUser = {
   steamId64: string;
   accountName: string;
   personaName: string;
-  avatarUrl: string;
+  avatarPng: string;
 }
