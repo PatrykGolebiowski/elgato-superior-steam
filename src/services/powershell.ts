@@ -2,12 +2,6 @@ import streamDeck from "@elgato/streamdeck";
 import { exec } from "child_process";
 import { promisify } from "util";
 
-type Process = {
-  Name?: string;
-  ProcessName?: string;
-  MainWindowTitle?: string;
-};
-
 export class PowerShell {
   private debugPrefix: string = "[PowerShell]";
   private execAsync = promisify(exec);
