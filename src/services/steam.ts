@@ -176,11 +176,37 @@ class SteamWebProtocol {
   async startSteamAsUser(steamExePath: string, accountName: string): Promise<void> {
     streamDeck.logger.info(`${SteamWebProtocol.debugPrefix} Starting Steam as user '${accountName}'...`);
 
-    // First, ensure Steam is closed
-    this.exitSteam();
+    const steamProcess = await this.powershell.getProcess({
+      name: "steam*",
+      properties: ["Name", "ProcessName", "Id"],
+    });
 
-    // Wait for Steam to close
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    if (steamProcess.length > 0) {
+      const processId = steamProcess[0].Id;
+
+      this.exitSteam();
+      // Wait for it to exit gracefully (returns true if it exits, false on timeout)
+
+      const exited = await this.powershell.waitProcess({
+        id: processId,
+        timeout: 2000, // 2 seconds
+      });
+
+      // If it didn't exit, force stop it
+      if (!exited) {
+        streamDeck.logger.warn("Steam didn't exit, forcing stop...");
+        await this.powershell.stopProcess({
+          id: processId,
+          force: true,
+        });
+
+        // Wwait a bit more after force stop
+        await this.powershell.waitProcess({
+          id: processId,
+          timeout: 1000,
+        });
+      }
+    }
 
     // Start Steam with specific user account
     await this.powershell.startProcess({ target: steamExePath, args: ["-login", accountName] });
