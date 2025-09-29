@@ -13,7 +13,10 @@ class SteamUserRegistry {
     streamDeck.logger.debug(`${SteamUserRegistry.debugPrefix} Creating instance...`);
 
     const powershell = new PowerShell();
-    const registry = await powershell.readRegistryEntry("HKCU:\\Software\\Valve\\Steam", ["SteamExe", "SteamPath", "AutoLoginUser"]);
+    const registry = await powershell.readRegistryEntry({
+      path: "HKCU:\\Software\\Valve\\Steam",
+      properties: ["SteamExe", "SteamPath", "AutoLoginUser"],
+    });
 
     if (Array.isArray(registry) || !registry || typeof registry !== "object") {
       throw new Error("Registry entry not found or invalid");
@@ -78,7 +81,7 @@ class SteamLibrary {
     const vdfPath = `${steamPath}/steamapps/libraryfolders.vdf`;
     streamDeck.logger.trace(`${SteamLibrary.debugPrefix} Library config path: ${vdfPath}`);
 
-    const vdfFileContent = String(await this.powershell.readFile(vdfPath));
+    const vdfFileContent = String(await this.powershell.getContent(vdfPath));
     const parsedContent = VDF.parse(vdfFileContent) as Object;
 
     // Parse VDF structure to extract library folders
@@ -107,19 +110,21 @@ class SteamLibrary {
 
     for (const folder of folders) {
       // Find all .acf manifest files in this library folder
-      const directoryContent = await this.powershell.listDirectory(folder.path);
+      const directoryContent = await this.powershell.getChildItem({
+        path: folder.path,
+        filter: "$_.Name -like 'appmanifest_*.acf'",
+        properties: ["Name", "Mode"],
+      })
+
       const manifestFiles = directoryContent.files
-        .filter((file) => file.mode === "file")
-        .filter((file) => file.name.startsWith("appmanifest_") && file.name.endsWith(".acf"))
-        .map((file) => file.name);
 
       streamDeck.logger.debug(`${SteamLibrary.debugPrefix} Found ${manifestFiles.length} manifests in ${folder.path}`);
 
       // Parse all manifests in parallel for performance
       const gamePromises = manifestFiles.map(async (manifest) => {
-        const manifestPath = `${folder.path}\\${manifest}`;
+        const manifestPath = `${folder.path}\\${manifest.name}`;
 
-        const vdfContent = await this.powershell.readFile(manifestPath);
+        const vdfContent = await this.powershell.getContent(manifestPath);
         const parsedContent = VDF.parse(String(vdfContent)) as any;
 
         // Parse VDF structure to extract game data
@@ -165,7 +170,7 @@ class SteamWebProtocol {
   // Steam control
   startSteam(): void {
     streamDeck.logger.info(`${SteamWebProtocol.debugPrefix} Starting Steam...`);
-    this.powershell.startProcess("steam://");
+    this.powershell.startProcess({ target: this.steamExe });
   }
 
   async startSteamAsUser(steamExePath: string, accountName: string): Promise<void> {
@@ -178,18 +183,18 @@ class SteamWebProtocol {
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
     // Start Steam with specific user account
-    await this.powershell.startProcessWithArgs(`${steamExePath}`, ["-login", `${accountName}`]);
+    await this.powershell.startProcess({ target: steamExePath, args: ["-login", accountName] });
   }
 
   exitSteam(): void {
     streamDeck.logger.info(`${SteamWebProtocol.debugPrefix} Exiting Steam...`);
-    this.powershell.startProcess("steam://exit");
+    this.powershell.startProcess({ target: "steam://exit" });
   }
 
   // Big Picture
   async launchBigPicture(): Promise<boolean> {
     streamDeck.logger.debug(`${SteamWebProtocol.debugPrefix} Launching Big Picture mode...`);
-    this.powershell.startProcess("steam://open/bigpicture");
+    this.powershell.startProcess({ target: "steam://open/bigpicture" });
 
     // Wait and verify launch
     await new Promise((resolve) => setTimeout(resolve, 500));
@@ -205,11 +210,15 @@ class SteamWebProtocol {
 
   exitBigPicture(): void {
     streamDeck.logger.debug(`${SteamWebProtocol.debugPrefix} Exiting Big Picture mode...`);
-    this.powershell.startProcess("steam://close/bigpicture");
+    this.powershell.startProcess({ target: "steam://close/bigpicture" });
   }
 
   async isBigPictureRunning(): Promise<boolean> {
-    const processes = await this.powershell.searchProcesses("steam*", "big picture");
+    const processes = await this.powershell.getProcess({
+      name: "*steam**",
+      filter: "$_.MainWindowTitle -like '*big picture*'",
+      properties: ["Name", "ProcessName", "MainWindowTitle"],
+    });
     const result = processes.length > 0 && processes[0].Name !== null;
     streamDeck.logger.debug(`${SteamWebProtocol.debugPrefix} Big Picture: ${result}`);
     return result;
@@ -218,12 +227,12 @@ class SteamWebProtocol {
   // Friends and status
   setFriendStatus(status: SteamFriendStatus): void {
     streamDeck.logger.debug(`${SteamWebProtocol.debugPrefix} Setting friend status to '${status}'...`);
-    this.powershell.startProcess(`steam://friends/status/${status}`);
+    this.powershell.startProcess({ target: `steam://friends/status/${status}` });
   }
 
   openFriendsList(): void {
     streamDeck.logger.debug(`${SteamWebProtocol.debugPrefix} Opening friends list...`);
-    this.powershell.startProcess("steam://open/friends");
+    this.powershell.startProcess({ target: "steam://open/friends" });
   }
 }
 
@@ -262,7 +271,7 @@ class SteamUsers {
     const vdfPath = `${steamPath}/config/loginusers.vdf`;
     streamDeck.logger.debug(`${SteamUsers.debugPrefix} Users config path: ${vdfPath}`);
 
-    const vdfFileContent = String(await this.powershell.readFile(vdfPath));
+    const vdfFileContent = String(await this.powershell.getContent(vdfPath));
     const parsedContent = VDF.parse(vdfFileContent) as Object;
 
     streamDeck.logger.trace(`${SteamUsers.debugPrefix} Parsed content: ${JSON.stringify(parsedContent)}`);
