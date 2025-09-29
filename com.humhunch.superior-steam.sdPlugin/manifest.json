@@ -48,13 +48,13 @@
     {
       "Name": "Switch account",
       "UUID": "com.humhunch.superior-steam.switch-account",
-      "Icon": "imgs/actions/steam/y",
+      "Icon": "imgs/actions/steam/default_user",
       "Tooltip": "Installed Steam games.",
       "PropertyInspectorPath": "ui/switch-account.html",
       "Controllers": ["Keypad"],
       "States": [
         {
-          "Image": "imgs/actions/steam/y",
+          "Image": "imgs/actions/steam/default_user",
           "TitleAlignment": "middle"
         }
       ]

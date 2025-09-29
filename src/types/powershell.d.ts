@@ -35,6 +35,10 @@ interface StartProcessOptions {
   windowStyle?: 'Normal' | 'Hidden' | 'Minimized' | 'Maximized';
 }
 
+interface GetContentOptions {
+  path: string
+}
+
 // Return types
 type Directory = {
   path: string;

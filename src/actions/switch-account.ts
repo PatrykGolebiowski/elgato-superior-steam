@@ -12,7 +12,6 @@ type Settings = {
  */
 @action({ UUID: "com.humhunch.superior-steam.switch-account" })
 export class SwitchAccount extends SingletonAction<Settings> {
-
   override async onDidReceiveSettings(ev: DidReceiveSettingsEvent<Settings>): Promise<void> {
     const payload = ev.payload.settings;
 
@@ -21,8 +20,14 @@ export class SwitchAccount extends SingletonAction<Settings> {
       const steam = await getSteam();
       const user = steam.getUsers().find((user) => user.accountName === payload.accountName);
 
-      if (user && payload.personaName !== user.personaName) {
-        await ev.action.setSettings({ ...payload, personaName: user.personaName });
+      if (user) {
+        // Update persona name if different
+        if (payload.personaName !== user.personaName) {
+          await ev.action.setSettings({ ...payload, personaName: user.personaName });
+        }
+
+        // Set the avatar image
+        await ev.action.setImage(user.avatarBase64);
       }
     }
   }

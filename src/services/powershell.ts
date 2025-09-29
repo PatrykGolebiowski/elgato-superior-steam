@@ -213,16 +213,22 @@ export class PowerShell {
     }
   }
 
-  public async getContent(path: string): Promise<string> {
-    const command = new CommandBuilder().command(`Get-Content -Path '${path}' -Raw`);
+  public async getContent(options: GetContentOptions): Promise<string> {
+    const command = new CommandBuilder().command(`Get-Content -Path '${options.path}' -Raw`);
 
     try {
       const result = await this.invokeCommand<string>(command, "text");
       return result || "";
     } catch (error) {
-      streamDeck.logger.error(`Error reading file ${path}:`, error);
+      streamDeck.logger.error(`Error reading file ${options.path}:`, error);
       return "";
     }
+  }
+
+  public async getContentBase64(options: GetContentOptions): Promise<string> {
+    const command = new CommandBuilder().command(`[Convert]::ToBase64String([IO.File]::ReadAllBytes('${options.path}'))`);
+
+    return await this.invokeCommand<string>(command, "text");
   }
 
   public async getProcess(options: ProcessOptions): Promise<Process[]> {
