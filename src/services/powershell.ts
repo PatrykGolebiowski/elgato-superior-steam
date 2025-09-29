@@ -103,7 +103,6 @@ class CommandBuilder {
 
 export class PowerShell {
   private debugPrefix: string = "[PowerShell]";
-  // private commandBuilder = new CommandBuilder();
   private execAsync = promisify(exec);
 
   /**
@@ -245,6 +244,41 @@ export class PowerShell {
       streamDeck.logger.error(`Error searching for process ${options.name}:`, error);
       return [];
     }
+  }
+
+  public async stopProcess(options: StopProcessOptions): Promise<void> {
+    if (!options.name && !options.id) {
+      throw new Error("Either name or id must be specified");
+    }
+
+    const identifier = options.name ? `-Name "${options.name}"` : `-Id ${options.id}`;
+    const forceParam = options.force ? " -Force" : "";
+
+    const command = new CommandBuilder().command(`Stop-Process ${identifier}${forceParam} -ErrorAction SilentlyContinue`);
+
+    await this.invokeCommand(command, "none");
+  }
+
+  public async waitProcess(options: WaitProcessOptions): Promise<boolean> {
+    if (!options.name && !options.id) {
+      throw new Error("Either name or id must be specified");
+    }
+
+    const identifier = options.name ? `-Name "${options.name}"` : `-Id ${options.id}`;
+    const timeoutSeconds = options.timeout ? Math.ceil(options.timeout / 1000) : 10;
+
+    const command = new CommandBuilder()
+      .command(`$result = try {`)
+      .command(`  Wait-Process ${identifier} -Timeout ${timeoutSeconds} -ErrorAction Stop`)
+      .command(`  $true`)
+      .command(`} catch [Microsoft.PowerShell.Commands.ProcessCommandException] {`)
+      .command(`  $false`)
+      .command(`} catch {`)
+      .command(`  $true`)
+      .command(`}`)
+      .command(`$result`); // Output the result
+
+    return await this.invokeCommand<boolean>(command, "json");
   }
 
   // Helpers

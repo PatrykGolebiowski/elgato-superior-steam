@@ -10,6 +10,31 @@ interface CommandOptions {
   unique?: boolean; // `Get unique` results
 }
 
+// Processes
+interface ProcessIdentifier {
+  name?: string;
+  processName?: string;
+  id: number;
+}
+
+interface StopProcessOptions extends ProcessIdentifier {
+  force?: boolean;
+}
+
+interface WaitProcessOptions extends ProcessIdentifier {
+  timeout?: number;
+}
+
+interface StartProcessOptions {
+  target: string;
+  args?: string[];
+  verb?: string; // For 'RunAs' (admin), 'Open', etc.
+  workingDirectory?: string;
+  windowStyle?: "Normal" | "Hidden" | "Minimized" | "Maximized";
+}
+
+
+
 interface QueryOptions {
   filter?: string;
   properties?: string[];
@@ -27,16 +52,10 @@ interface RegistryOptions extends QueryOptions {
   path: string;
 }
 
-interface StartProcessOptions {
-  target: string;
-  args?: string[];
-  verb?: string;  // For 'RunAs' (admin), 'Open', etc.
-  workingDirectory?: string;
-  windowStyle?: 'Normal' | 'Hidden' | 'Minimized' | 'Maximized';
-}
+
 
 interface GetContentOptions {
-  path: string
+  path: string;
 }
 
 // Return types
@@ -54,5 +73,6 @@ type File = {
 type Process = {
   Name: string;
   ProcessName: string;
-  MainWindowTitle: string;
+  Id: number;
+  MainWindowTitle?: string;
 };
