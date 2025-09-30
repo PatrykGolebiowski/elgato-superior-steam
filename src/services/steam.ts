@@ -1,3 +1,5 @@
+import fs from "fs/promises";
+import path from "path";
 import streamDeck from "@elgato/streamdeck";
 import * as VDF from "@node-steam/vdf";
 
@@ -78,10 +80,11 @@ class SteamLibrary {
 
   private async parseLibraryVDF(steamPath: string): Promise<SteamLibraryFolders[]> {
     const libraryFolders: SteamLibraryFolders[] = [];
-    const vdfPath = `${steamPath}/steamapps/libraryfolders.vdf`;
+    const vdfPath = path.join(steamPath, "steamapps", "libraryfolders.vdf");
+    
     streamDeck.logger.trace(`${SteamLibrary.debugPrefix} Library config path: ${vdfPath}`);
 
-    const vdfFileContent = String(await this.powershell.getContent({ path: vdfPath }));
+    const vdfFileContent = await fs.readFile(vdfPath, 'utf-8');
     const parsedContent = VDF.parse(vdfFileContent) as Object;
 
     // Parse VDF structure to extract library folders
@@ -122,9 +125,10 @@ class SteamLibrary {
 
       // Parse all manifests in parallel for performance
       const gamePromises = manifestFiles.map(async (manifest) => {
-        const manifestPath = `${folder.path}\\${manifest.name}`;
-
-        const vdfContent = await this.powershell.getContent({ path: manifestPath });
+        let vdfContent: string = "";
+        const manifestPath = path.join(folder.path, manifest.name);
+        
+        vdfContent = await fs.readFile(manifestPath, "utf-8");
         const parsedContent = VDF.parse(String(vdfContent)) as any;
 
         // Parse VDF structure to extract game data
@@ -294,10 +298,17 @@ class SteamUsers {
 
   private async parseUsersVDF(steamPath: string): Promise<SteamUser[]> {
     const users: SteamUser[] = [];
-    const vdfPath = `${steamPath}/config/loginusers.vdf`;
+    let vdfFileContent: string = "";
+
+    const vdfPath = path.join(steamPath, "config", "loginusers.vdf");
     streamDeck.logger.debug(`${SteamUsers.debugPrefix} Users config path: ${vdfPath}`);
 
-    const vdfFileContent = String(await this.powershell.getContent({ path: vdfPath }));
+    try {
+      vdfFileContent = await fs.readFile(vdfPath, "utf-8");
+    } catch (error) {
+      streamDeck.logger.error(`${SteamUsers.debugPrefix} Failed to read: ${vdfPath}`);
+      return [];
+    }
     const parsedContent = VDF.parse(vdfFileContent) as Object;
 
     streamDeck.logger.trace(`${SteamUsers.debugPrefix} Parsed content: ${JSON.stringify(parsedContent)}`);
@@ -322,8 +333,10 @@ class SteamUsers {
   }
 
   private async getUserAvatar(steamPath: string, steamId64: string): Promise<string> {
-    const avatarPath = `${steamPath}/config/avatarcache/${steamId64}.png`;
-    const base64 = await this.powershell.getContentBase64({ path: avatarPath });
+    let base64: string = "";
+
+    const avatarPath = path.join(steamPath, "config", "avatarcache", `${steamId64}.png`);
+    base64 = await fs.readFile(avatarPath, "base64");
 
     return `data:image/png;base64,${base64}`;
   }
