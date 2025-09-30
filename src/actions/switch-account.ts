@@ -54,7 +54,7 @@ export class SwitchAccount extends SingletonAction<Settings> {
 
     if (settings.accountName) {
       streamDeck.logger.info(`[SwitchAccount] Switching to account: ${settings.personaName} (${settings.accountName})`);
-      await steam.startSteamAsUser(settings.accountName);
+      await steam.startSteam(settings.accountName);
     } else {
       streamDeck.logger.warn(`[SwitchAccount] No account selected`);
     }
