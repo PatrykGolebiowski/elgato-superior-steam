@@ -1,5 +1,8 @@
 import fs from "fs/promises";
 import path from "path";
+import open, { openApp } from "open";
+import os from "os";
+import psList from "ps-list";
 import streamDeck from "@elgato/streamdeck";
 import * as VDF from "@node-steam/vdf";
 
@@ -24,7 +27,11 @@ class SteamUserRegistry {
       throw new Error("Registry entry not found or invalid");
     }
 
-    return new SteamUserRegistry((registry as any).SteamExe ?? "", (registry as any).SteamPath ?? "", (registry as any).AutoLoginUser ?? "");
+    return new SteamUserRegistry(
+      path.normalize((registry as any).SteamExe ?? ""),
+      path.normalize((registry as any).SteamPath ?? ""),
+      (registry as any).AutoLoginUser ?? ""
+    );
   }
 
   // Getters
@@ -162,59 +169,38 @@ class SteamProtocol {
   }
 
   // Steam control
-  startSteam(): void {
-    streamDeck.logger.info(`${SteamProtocol.debugPrefix} Starting Steam...`);
-    this.powershell.startProcess({ target: this.steamExe });
-  }
+  async startSteam(accountName?: string): Promise<void> {
+    if (accountName) {
+      streamDeck.logger.info(`${SteamProtocol.debugPrefix} Starting Steam as user '${accountName}'...`);
 
-  async startSteamAsUser(steamExePath: string, accountName: string): Promise<void> {
-    streamDeck.logger.info(`${SteamProtocol.debugPrefix} Starting Steam as user '${accountName}'...`);
+      const processes = await psList();
+      const steamRunning = processes.some((process) => process.name.toLowerCase().includes("steam"));
 
-    const steamProcess = await this.powershell.getProcess({
-      name: "steam*",
-      properties: ["Name", "ProcessName", "Id"],
-    });
+      if (steamRunning) {
+        this.exitSteam();
+        const exited = await this.waitForSteamExit(3000);
 
-    if (steamProcess.length > 0) {
-      const processId = steamProcess[0].Id;
-
-      this.exitSteam();
-      // Wait for it to exit gracefully (returns true if it exits, false on timeout)
-
-      const exited = await this.powershell.waitProcess({
-        id: processId,
-        timeout: 2000, // 2 seconds
-      });
-
-      // If it didn't exit, force stop it
-      if (!exited) {
-        streamDeck.logger.warn("Steam didn't exit, forcing stop...");
-        await this.powershell.stopProcess({
-          id: processId,
-          force: true,
-        });
-
-        // Wwait a bit more after force stop
-        await this.powershell.waitProcess({
-          id: processId,
-          timeout: 1000,
-        });
+        if (!exited) {
+          await openApp(this.steamExe, { arguments: ["-login", accountName] });
+        } else {
+          streamDeck.logger.error(`${SteamProtocol.debugPrefix} Steam failed to stop...`);
+        }
       }
+    } else {
+      streamDeck.logger.info(`${SteamProtocol.debugPrefix} Starting Steam...`);
+      await open(this.steamExe, { wait: false });
     }
-
-    // Start Steam with specific user account
-    await this.powershell.startProcess({ target: steamExePath, args: ["-login", accountName] });
   }
 
   exitSteam(): void {
     streamDeck.logger.info(`${SteamProtocol.debugPrefix} Exiting Steam...`);
-    this.powershell.startProcess({ target: "steam://exit" });
+    open("steam://exit");
   }
 
   // Big Picture
   async launchBigPicture(): Promise<boolean> {
     streamDeck.logger.debug(`${SteamProtocol.debugPrefix} Launching Big Picture mode...`);
-    this.powershell.startProcess({ target: "steam://open/bigpicture" });
+    await open("steam://open/bigpicture");
 
     // Wait and verify launch
     await new Promise((resolve) => setTimeout(resolve, 500));
@@ -230,29 +216,47 @@ class SteamProtocol {
 
   exitBigPicture(): void {
     streamDeck.logger.debug(`${SteamProtocol.debugPrefix} Exiting Big Picture mode...`);
-    this.powershell.startProcess({ target: "steam://close/bigpicture" });
+    open("steam://close/bigpicture");
   }
 
   async isBigPictureRunning(): Promise<boolean> {
-    const processes = await this.powershell.getProcess({
-      name: "*steam**",
-      filter: "$_.MainWindowTitle -like '*big picture*'",
-      properties: ["Name", "ProcessName", "MainWindowTitle"],
-    });
-    const result = processes.length > 0 && processes[0].Name !== null;
-    streamDeck.logger.debug(`${SteamProtocol.debugPrefix} Big Picture: ${result}`);
-    return result;
+    if (os.platform() === "win32") {
+      const processes = await this.powershell.getProcess({
+        name: "*steam**",
+        filter: "$_.MainWindowTitle -like '*big picture*'",
+        properties: ["Name", "ProcessName", "MainWindowTitle"],
+      });
+      return processes.length > 0;
+    } else {
+      const processes = await psList();
+      return processes.some((process) => process.name.toLowerCase().includes("big picture")); // TO DO: CHECK BIG PICTURE PROCESS NAME ON MACOS
+    }
   }
 
   // Friends and status
   setFriendStatus(status: SteamFriendStatus): void {
-    streamDeck.logger.debug(`${SteamProtocol.debugPrefix} Setting friend status to '${status}'...`);
-    this.powershell.startProcess({ target: `steam://friends/status/${status}` });
+    open(`steam://friends/status/${status}`);
   }
 
   openFriendsList(): void {
-    streamDeck.logger.debug(`${SteamProtocol.debugPrefix} Opening friends list...`);
-    this.powershell.startProcess({ target: "steam://open/friends" });
+    open(`steam://open/friends`);
+  }
+
+  private async waitForSteamExit(timeoutMs: number): Promise<boolean> {
+    const startTime = Date.now();
+
+    while (Date.now() - startTime < timeoutMs) {
+      const processes = await psList();
+      const steamRunning = processes.some((process) => process.name.toLowerCase().includes("steam"));
+
+      if (!steamRunning) {
+        return true;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+
+    return false;
   }
 }
 
@@ -328,14 +332,14 @@ export class Steam {
   private registry: SteamUserRegistry;
   private library: SteamLibrary;
   private users: SteamUsers;
-  private webProtocol: SteamProtocol;
+  private protocol: SteamProtocol;
 
   // Init
-  private constructor(registry: SteamUserRegistry, library: SteamLibrary, users: SteamUsers, webProtocol: SteamProtocol) {
+  private constructor(registry: SteamUserRegistry, library: SteamLibrary, users: SteamUsers, protocol: SteamProtocol) {
     this.registry = registry;
     this.library = library;
     this.users = users;
-    this.webProtocol = webProtocol;
+    this.protocol = protocol;
   }
 
   static async create(): Promise<Steam> {
@@ -344,9 +348,9 @@ export class Steam {
     const registry = await SteamUserRegistry.create();
     const library = await SteamLibrary.create(registry.steamPath);
     const users = await SteamUsers.create(registry.steamPath);
-    const webProtocol = await SteamProtocol.create(registry.steamExe);
+    const protocol = await SteamProtocol.create(registry.steamExe);
 
-    return new Steam(registry, library, users, webProtocol);
+    return new Steam(registry, library, users, protocol);
   }
 
   // Registry
@@ -377,38 +381,33 @@ export class Steam {
   }
 
   // Steam control
-  startSteam(): void {
-    this.webProtocol.startSteam();
-  }
-
-  async startSteamAsUser(accountName: string): Promise<void> {
-    const steamExe = this.getSteamExe();
-    await this.webProtocol.startSteamAsUser(steamExe, accountName);
+  async startSteam(accountName?: string): Promise<void> {
+    this.protocol.startSteam(accountName);
   }
 
   exitSteam(): void {
-    this.webProtocol.exitSteam();
+    this.protocol.exitSteam();
   }
 
   // Big Picture
   async isBigPictureRunning(): Promise<boolean> {
-    return this.webProtocol.isBigPictureRunning();
+    return this.protocol.isBigPictureRunning();
   }
 
   async launchBigPicture(): Promise<boolean> {
-    return this.webProtocol.launchBigPicture();
+    return this.protocol.launchBigPicture();
   }
 
   exitBigPicture(): void {
-    this.webProtocol.exitBigPicture();
+    this.protocol.exitBigPicture();
   }
 
   // Friends and status
   setFriendStatus(status: SteamFriendStatus): void {
-    this.webProtocol.setFriendStatus(status);
+    this.protocol.setFriendStatus(status);
   }
 
   openFriendsList(): void {
-    this.webProtocol.openFriendsList();
+    this.protocol.openFriendsList();
   }
 }
