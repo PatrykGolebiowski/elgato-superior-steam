@@ -43,22 +43,17 @@ class SteamUserRegistry {
 
 class SteamLibrary {
   private static readonly debugPrefix = "[SteamLibrary]";
-  private powershell: PowerShell;
 
   private _folders: SteamLibraryFolders[] = [];
   private _installedGames: SteamGame[] = [];
 
   // Init
-  private constructor(powershell: PowerShell) {
-    this.powershell = powershell;
-  }
+  private constructor() {}
 
   static async create(steamPath: string): Promise<SteamLibrary> {
     streamDeck.logger.debug(`${SteamLibrary.debugPrefix} Creating instance...`);
 
-    const powershell = new PowerShell();
-
-    const library = new SteamLibrary(powershell);
+    const library = new SteamLibrary();
     await library.initialize(steamPath);
 
     return library;
@@ -81,10 +76,10 @@ class SteamLibrary {
   private async parseLibraryVDF(steamPath: string): Promise<SteamLibraryFolders[]> {
     const libraryFolders: SteamLibraryFolders[] = [];
     const vdfPath = path.join(steamPath, "steamapps", "libraryfolders.vdf");
-    
+
     streamDeck.logger.trace(`${SteamLibrary.debugPrefix} Library config path: ${vdfPath}`);
 
-    const vdfFileContent = await fs.readFile(vdfPath, 'utf-8');
+    const vdfFileContent = await fs.readFile(vdfPath, "utf-8");
     const parsedContent = VDF.parse(vdfFileContent) as Object;
 
     // Parse VDF structure to extract library folders
@@ -93,7 +88,7 @@ class SteamLibrary {
       if (typeof value === "object" && value !== null && "path" in value) {
         const libraryEntry = value as any;
         const folder: SteamLibraryFolders = {
-          path: `${libraryEntry.path}\\steamapps`,
+          path: path.join(libraryEntry.path, "steamapps"),
           contentid: String(libraryEntry.contentid || ""),
           totalsize: String(libraryEntry.totalsize || "0"),
           apps: libraryEntry.apps ? Object.keys(libraryEntry.apps) : [],
@@ -112,22 +107,17 @@ class SteamLibrary {
     const games: SteamGame[] = [];
 
     for (const folder of folders) {
-      // Find all .acf manifest files in this library folder
-      const directoryContent = await this.powershell.getChildItem({
-        path: folder.path,
-        filter: "$_.Name -like 'appmanifest_*.acf'",
-        properties: ["Name", "Mode"],
-      });
-
-      const manifestFiles = directoryContent.files;
+      let manifestFiles: string[] = [];
+      const files = await fs.readdir(folder.path);
+      manifestFiles = files.filter((file) => path.extname(file) === ".acf");
 
       streamDeck.logger.debug(`${SteamLibrary.debugPrefix} Found ${manifestFiles.length} manifests in ${folder.path}`);
 
       // Parse all manifests in parallel for performance
       const gamePromises = manifestFiles.map(async (manifest) => {
         let vdfContent: string = "";
-        const manifestPath = path.join(folder.path, manifest.name);
-        
+        const manifestPath = path.join(folder.path, manifest);
+
         vdfContent = await fs.readFile(manifestPath, "utf-8");
         const parsedContent = VDF.parse(String(vdfContent)) as any;
 
@@ -147,7 +137,7 @@ class SteamLibrary {
       const parsedGames = await Promise.all(gamePromises);
       games.push(...parsedGames);
     }
-    streamDeck.logger.debug(`${SteamLibrary.debugPrefix} Games: ${games}`);
+
     streamDeck.logger.debug(`${SteamLibrary.debugPrefix} Total games found: ${games.length}`);
     return games;
   }
@@ -268,21 +258,16 @@ class SteamProtocol {
 
 class SteamUsers {
   private static readonly debugPrefix = "[SteamUsers]";
-  private powershell: PowerShell;
 
   private _users: SteamUser[] = [];
 
   // Init
-  private constructor(powershell: PowerShell) {
-    this.powershell = powershell;
-  }
+  private constructor() {}
 
   static async create(steamPath: string): Promise<SteamUsers> {
     streamDeck.logger.debug(`${SteamUsers.debugPrefix} Creating instance...`);
 
-    const powershell = new PowerShell();
-
-    const users = new SteamUsers(powershell);
+    const users = new SteamUsers();
     await users.initialize(steamPath);
 
     return users;
@@ -296,42 +281,6 @@ class SteamUsers {
     this._users = await this.parseUsersVDF(steamPath);
   }
 
-  private async parseUsersVDF(steamPath: string): Promise<SteamUser[]> {
-    const users: SteamUser[] = [];
-    let vdfFileContent: string = "";
-
-    const vdfPath = path.join(steamPath, "config", "loginusers.vdf");
-    streamDeck.logger.debug(`${SteamUsers.debugPrefix} Users config path: ${vdfPath}`);
-
-    try {
-      vdfFileContent = await fs.readFile(vdfPath, "utf-8");
-    } catch (error) {
-      streamDeck.logger.error(`${SteamUsers.debugPrefix} Failed to read: ${vdfPath}`);
-      return [];
-    }
-    const parsedContent = VDF.parse(vdfFileContent) as Object;
-
-    streamDeck.logger.trace(`${SteamUsers.debugPrefix} Parsed content: ${JSON.stringify(parsedContent)}`);
-
-    // Parse VDF structure to extract users
-    const usersData = (parsedContent as any).users || parsedContent;
-    for (const [steamId64, value] of Object.entries(usersData)) {
-      if (typeof value === "object" && value !== null) {
-        const userEntry = value as any;
-        const user: SteamUser = {
-          steamId64: steamId64,
-          accountName: userEntry.AccountName || "",
-          personaName: userEntry.PersonaName || "",
-          avatarBase64: await this.getUserAvatar(steamPath, steamId64),
-        };
-        users.push(user);
-      }
-    }
-
-    streamDeck.logger.debug(`${SteamUsers.debugPrefix} Found ${users.length} users`);
-    return users;
-  }
-
   private async getUserAvatar(steamPath: string, steamId64: string): Promise<string> {
     let base64: string = "";
 
@@ -339,6 +288,37 @@ class SteamUsers {
     base64 = await fs.readFile(avatarPath, "base64");
 
     return `data:image/png;base64,${base64}`;
+  }
+
+  private async parseUsersVDF(steamPath: string): Promise<SteamUser[]> {
+    let users: SteamUser[] = [];
+    let vdfFileContent: string = "";
+
+    const vdfPath = path.join(steamPath, "config", "loginusers.vdf");
+    streamDeck.logger.debug(`${SteamUsers.debugPrefix} Config path: ${vdfPath}`);
+
+    try {
+      vdfFileContent = await fs.readFile(vdfPath, "utf-8");
+    } catch (error) {
+      streamDeck.logger.error(`${SteamUsers.debugPrefix} Failed to read: ${vdfPath}`);
+      return [];
+    }
+
+    const parsedContent = VDF.parse(vdfFileContent) as Object;
+    const usersData = (parsedContent as any).users || parsedContent;
+
+    const userPromises = Object.entries(usersData).map(async ([steamId64, value]) => {
+      const entry = value as any;
+      return {
+        steamId64: steamId64,
+        accountName: entry.AccountName || "",
+        personaName: entry.PersonaName || "",
+        avatarBase64: await this.getUserAvatar(steamPath, steamId64),
+      };
+    });
+
+    users = await Promise.all(userPromises);
+    return users;
   }
 }
 
