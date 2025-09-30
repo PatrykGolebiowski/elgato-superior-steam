@@ -149,8 +149,8 @@ class SteamLibrary {
   }
 }
 
-class SteamWebProtocol {
-  private static readonly debugPrefix = "[SteamWebProtocol]";
+class SteamProtocol {
+  private static readonly debugPrefix = "[SteamProtocol]";
   private powershell: PowerShell;
   private steamExe: string;
 
@@ -160,21 +160,21 @@ class SteamWebProtocol {
     this.steamExe = steamExe;
   }
 
-  static async create(steamExe: string): Promise<SteamWebProtocol> {
-    streamDeck.logger.debug(`${SteamWebProtocol.debugPrefix} Creating instance...`);
+  static async create(steamExe: string): Promise<SteamProtocol> {
+    streamDeck.logger.debug(`${SteamProtocol.debugPrefix} Creating instance...`);
 
     const powershell = new PowerShell();
-    return new SteamWebProtocol(powershell, steamExe);
+    return new SteamProtocol(powershell, steamExe);
   }
 
   // Steam control
   startSteam(): void {
-    streamDeck.logger.info(`${SteamWebProtocol.debugPrefix} Starting Steam...`);
+    streamDeck.logger.info(`${SteamProtocol.debugPrefix} Starting Steam...`);
     this.powershell.startProcess({ target: this.steamExe });
   }
 
   async startSteamAsUser(steamExePath: string, accountName: string): Promise<void> {
-    streamDeck.logger.info(`${SteamWebProtocol.debugPrefix} Starting Steam as user '${accountName}'...`);
+    streamDeck.logger.info(`${SteamProtocol.debugPrefix} Starting Steam as user '${accountName}'...`);
 
     const steamProcess = await this.powershell.getProcess({
       name: "steam*",
@@ -213,13 +213,13 @@ class SteamWebProtocol {
   }
 
   exitSteam(): void {
-    streamDeck.logger.info(`${SteamWebProtocol.debugPrefix} Exiting Steam...`);
+    streamDeck.logger.info(`${SteamProtocol.debugPrefix} Exiting Steam...`);
     this.powershell.startProcess({ target: "steam://exit" });
   }
 
   // Big Picture
   async launchBigPicture(): Promise<boolean> {
-    streamDeck.logger.debug(`${SteamWebProtocol.debugPrefix} Launching Big Picture mode...`);
+    streamDeck.logger.debug(`${SteamProtocol.debugPrefix} Launching Big Picture mode...`);
     this.powershell.startProcess({ target: "steam://open/bigpicture" });
 
     // Wait and verify launch
@@ -227,7 +227,7 @@ class SteamWebProtocol {
     const isRunning = await this.isBigPictureRunning();
 
     if (!isRunning) {
-      streamDeck.logger.warn(`${SteamWebProtocol.debugPrefix} Big Picture launch command sent, but verification failed`);
+      streamDeck.logger.warn(`${SteamProtocol.debugPrefix} Big Picture launch command sent, but verification failed`);
       return false;
     }
 
@@ -235,7 +235,7 @@ class SteamWebProtocol {
   }
 
   exitBigPicture(): void {
-    streamDeck.logger.debug(`${SteamWebProtocol.debugPrefix} Exiting Big Picture mode...`);
+    streamDeck.logger.debug(`${SteamProtocol.debugPrefix} Exiting Big Picture mode...`);
     this.powershell.startProcess({ target: "steam://close/bigpicture" });
   }
 
@@ -246,18 +246,18 @@ class SteamWebProtocol {
       properties: ["Name", "ProcessName", "MainWindowTitle"],
     });
     const result = processes.length > 0 && processes[0].Name !== null;
-    streamDeck.logger.debug(`${SteamWebProtocol.debugPrefix} Big Picture: ${result}`);
+    streamDeck.logger.debug(`${SteamProtocol.debugPrefix} Big Picture: ${result}`);
     return result;
   }
 
   // Friends and status
   setFriendStatus(status: SteamFriendStatus): void {
-    streamDeck.logger.debug(`${SteamWebProtocol.debugPrefix} Setting friend status to '${status}'...`);
+    streamDeck.logger.debug(`${SteamProtocol.debugPrefix} Setting friend status to '${status}'...`);
     this.powershell.startProcess({ target: `steam://friends/status/${status}` });
   }
 
   openFriendsList(): void {
-    streamDeck.logger.debug(`${SteamWebProtocol.debugPrefix} Opening friends list...`);
+    streamDeck.logger.debug(`${SteamProtocol.debugPrefix} Opening friends list...`);
     this.powershell.startProcess({ target: "steam://open/friends" });
   }
 }
@@ -335,10 +335,10 @@ export class Steam {
   private registry: SteamUserRegistry;
   private library: SteamLibrary;
   private users: SteamUsers;
-  private webProtocol: SteamWebProtocol;
+  private webProtocol: SteamProtocol;
 
   // Init
-  private constructor(registry: SteamUserRegistry, library: SteamLibrary, users: SteamUsers, webProtocol: SteamWebProtocol) {
+  private constructor(registry: SteamUserRegistry, library: SteamLibrary, users: SteamUsers, webProtocol: SteamProtocol) {
     this.registry = registry;
     this.library = library;
     this.users = users;
@@ -351,7 +351,7 @@ export class Steam {
     const registry = await SteamUserRegistry.create();
     const library = await SteamLibrary.create(registry.steamPath);
     const users = await SteamUsers.create(registry.steamPath);
-    const webProtocol = await SteamWebProtocol.create(registry.steamExe);
+    const webProtocol = await SteamProtocol.create(registry.steamExe);
 
     return new Steam(registry, library, users, webProtocol);
   }
