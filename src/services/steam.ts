@@ -152,11 +152,11 @@ class SteamLibrary {
 
 class SteamProtocol {
   private static readonly debugPrefix = "[SteamProtocol]";
-  private powershell: PowerShell;
+  private powershell?: PowerShell;
   private steamExe: string;
 
   // Init
-  private constructor(powershell: PowerShell, steamExe: string) {
+  private constructor(powershell: PowerShell | undefined, steamExe: string) {
     this.powershell = powershell;
     this.steamExe = steamExe;
   }
@@ -164,7 +164,7 @@ class SteamProtocol {
   static async create(steamExe: string): Promise<SteamProtocol> {
     streamDeck.logger.debug(`${SteamProtocol.debugPrefix} Creating instance...`);
 
-    const powershell = new PowerShell();
+    const powershell = os.platform() === "win32" ? new PowerShell() : undefined;
     return new SteamProtocol(powershell, steamExe);
   }
 
@@ -175,17 +175,19 @@ class SteamProtocol {
 
       const processes = await psList();
       const steamRunning = processes.some((process) => process.name.toLowerCase().includes("steam"));
+      streamDeck.logger.info(`${SteamProtocol.debugPrefix} Steam status: ${steamRunning}`);
 
       if (steamRunning) {
         this.exitSteam();
-        const exited = await this.waitForSteamExit(3000);
+        const exited = await this.waitForSteamExit(3000);  // TO DO: MAKE TIMEOUT CONFIGURABLE
 
         if (!exited) {
-          await openApp(this.steamExe, { arguments: ["-login", accountName] });
-        } else {
           streamDeck.logger.error(`${SteamProtocol.debugPrefix} Steam failed to stop...`);
+          return;
         }
       }
+
+      await openApp(this.steamExe, { arguments: ["-login", accountName] });
     } else {
       streamDeck.logger.info(`${SteamProtocol.debugPrefix} Starting Steam...`);
       await open(this.steamExe, { wait: false });
@@ -220,7 +222,7 @@ class SteamProtocol {
   }
 
   async isBigPictureRunning(): Promise<boolean> {
-    if (os.platform() === "win32") {
+    if (os.platform() === "win32" && this.powershell) {
       const processes = await this.powershell.getProcess({
         name: "*steam**",
         filter: "$_.MainWindowTitle -like '*big picture*'",
