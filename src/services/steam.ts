@@ -265,7 +265,7 @@ class SteamProtocol {
 class SteamUsers {
   private static readonly debugPrefix = "[SteamUsers]";
 
-  private _users: SteamUser[] = [];
+  private _loggedInUsers: SteamUser[] = [];
 
   // Init
   private constructor() {}
@@ -279,12 +279,12 @@ class SteamUsers {
     return users;
   }
 
-  get users(): SteamUser[] {
-    return this._users;
+  get loggedInUsers(): SteamUser[] {
+    return this._loggedInUsers;
   }
 
   private async initialize(steamPath: string): Promise<void> {
-    this._users = await this.parseUsersVDF(steamPath);
+    this._loggedInUsers = await this.parseUsersVDF(steamPath);
   }
 
   private async getUserAvatar(steamPath: string, steamId64: string): Promise<string> {
@@ -297,7 +297,7 @@ class SteamUsers {
   }
 
   private async parseUsersVDF(steamPath: string): Promise<SteamUser[]> {
-    let users: SteamUser[] = [];
+    let loggedInUsers: SteamUser[] = [];
     let vdfFileContent: string = "";
 
     const vdfPath = path.join(steamPath, "config", "loginusers.vdf");
@@ -323,8 +323,8 @@ class SteamUsers {
       };
     });
 
-    users = await Promise.all(userPromises);
-    return users;
+    loggedInUsers = await Promise.all(userPromises);
+    return loggedInUsers;
   }
 }
 
@@ -378,8 +378,8 @@ export class Steam {
   }
 
   // Users
-  getUsers(): SteamUser[] {
-    return this.users.users;
+  getLoggedInUsers(): SteamUser[] {
+    return this.users.loggedInUsers;
   }
 
   // Steam control

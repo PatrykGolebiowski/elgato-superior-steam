@@ -18,7 +18,7 @@ export class SwitchAccount extends SingletonAction<Settings> {
     // Look up and store the persona name when account name changes
     if (payload.accountName) {
       const steam = await getSteam();
-      const user = steam.getUsers().find((user) => user.accountName === payload.accountName);
+      const user = steam.getLoggedInUsers().find((user) => user.accountName === payload.accountName);
 
       if (user) {
         // Update persona name if different
@@ -36,7 +36,7 @@ export class SwitchAccount extends SingletonAction<Settings> {
     // Handle datasource requests
     if (ev.payload instanceof Object && "event" in ev.payload && ev.payload.event === "steamUsers") {
       const steam = await getSteam();
-      const items: DataSourceResult = steam.getUsers().map((user) => ({
+      const items: DataSourceResult = steam.getLoggedInUsers().map((user) => ({
         value: user.accountName,
         label: `${user.personaName}`,
       }));
