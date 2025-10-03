@@ -179,7 +179,7 @@ class SteamProtocol {
 
       if (steamRunning) {
         this.exitSteam();
-        const exited = await this.waitForSteamExit(3000);  // TO DO: MAKE TIMEOUT CONFIGURABLE
+        const exited = await this.waitForSteamExit(3000); // TO DO: MAKE TIMEOUT CONFIGURABLE
 
         if (!exited) {
           streamDeck.logger.error(`${SteamProtocol.debugPrefix} Steam failed to stop...`);
@@ -244,6 +244,12 @@ class SteamProtocol {
     open(`steam://open/friends`);
   }
 
+  // Launch
+  launchApp(id: string): void {
+    open(`steam://launch/${id}`);
+  }
+
+  // Helpers
   private async waitForSteamExit(timeoutMs: number): Promise<boolean> {
     const startTime = Date.now();
 
@@ -411,5 +417,9 @@ export class Steam {
 
   openFriendsList(): void {
     this.protocol.openFriendsList();
+  }
+
+  launchApp(id: string): void {
+    this.protocol.launchApp(id);
   }
 }
