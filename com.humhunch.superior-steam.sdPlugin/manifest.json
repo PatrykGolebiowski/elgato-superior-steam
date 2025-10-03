@@ -46,11 +46,11 @@
       ]
     },
     {
-      "Name": "Switch account",
-      "UUID": "com.humhunch.superior-steam.switch-account",
+      "Name": "Launch account",
+      "UUID": "com.humhunch.superior-steam.launch-account",
       "Icon": "imgs/actions/steam/default_user",
-      "Tooltip": "Installed Steam games.",
-      "PropertyInspectorPath": "ui/switch-account.html",
+      "Tooltip": "Launch Steam with a specific account.",
+      "PropertyInspectorPath": "ui/launch-account.html",
       "Controllers": ["Keypad"],
       "States": [
         {
