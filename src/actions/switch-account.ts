@@ -1,4 +1,12 @@
-import streamDeck, { action, KeyDownEvent, SingletonAction, JsonValue, DidReceiveSettingsEvent, SendToPluginEvent } from "@elgato/streamdeck";
+import streamDeck, {
+  action,
+  KeyDownEvent,
+  SingletonAction,
+  JsonValue,
+  DidReceiveSettingsEvent,
+  SendToPluginEvent,
+  WillAppearEvent,
+} from "@elgato/streamdeck";
 import { DataSourcePayload, DataSourceResult } from "../types/sdpi";
 import { getSteam } from "../services/steam-singleton";
 
@@ -10,8 +18,22 @@ type Settings = {
 /**
  * Switch Steam to a different user account.
  */
-@action({ UUID: "com.humhunch.superior-steam.switch-account" })
-export class SwitchAccount extends SingletonAction<Settings> {
+@action({ UUID: "com.humhunch.superior-steam.run-steam" })
+export class RunSteam extends SingletonAction<Settings> {
+  override async onWillAppear(ev: WillAppearEvent<Settings>): Promise<void> {
+    const payload = ev.payload.settings;
+
+    // Restore the avatar image when action appears
+    if (payload.accountName) {
+      const steam = await getSteam();
+      const user = steam.getLoggedInUsers().find((user) => user.accountName === payload.accountName);
+
+      if (user) {
+        await ev.action.setImage(user.avatarBase64);
+      }
+    }
+  }
+
   override async onDidReceiveSettings(ev: DidReceiveSettingsEvent<Settings>): Promise<void> {
     const payload = ev.payload.settings;
 
