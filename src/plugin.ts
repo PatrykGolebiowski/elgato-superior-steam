@@ -3,7 +3,7 @@ import streamDeck, { LogLevel } from "@elgato/streamdeck";
 import { BigPicture } from "./actions/big-picture";
 import { Status } from "./actions/status";
 import { RunApp } from "./actions/run-app";
-import { SwitchAccount } from "./actions/switch-account";
+import { LaunchAccount } from "./actions/launch-account";
 
 // "trace" logging so that all messages between the Stream Deck, and the plugin are recorded.
 streamDeck.logger.setLevel(LogLevel.TRACE);
@@ -12,7 +12,7 @@ streamDeck.logger.setLevel(LogLevel.TRACE);
 streamDeck.actions.registerAction(new BigPicture());
 streamDeck.actions.registerAction(new Status());
 streamDeck.actions.registerAction(new RunApp());
-streamDeck.actions.registerAction(new SwitchAccount());
+streamDeck.actions.registerAction(new LaunchAccount());
 
 // Connect to Stream Deck and initialize Steam library
 streamDeck.connect().then(async () => {});

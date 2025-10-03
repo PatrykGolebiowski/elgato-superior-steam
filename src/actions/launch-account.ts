@@ -16,10 +16,10 @@ type Settings = {
 };
 
 /**
- * Switch Steam to a different user account.
+ * Launch Steam with a specific user account.
  */
-@action({ UUID: "com.humhunch.superior-steam.run-steam" })
-export class RunSteam extends SingletonAction<Settings> {
+@action({ UUID: "com.humhunch.superior-steam.launch-account" })
+export class LaunchAccount extends SingletonAction<Settings> {
   override async onWillAppear(ev: WillAppearEvent<Settings>): Promise<void> {
     const payload = ev.payload.settings;
 
@@ -75,10 +75,10 @@ export class RunSteam extends SingletonAction<Settings> {
     const settings = ev.payload.settings;
 
     if (settings.accountName) {
-      streamDeck.logger.info(`[SwitchAccount] Switching to account: ${settings.personaName} (${settings.accountName})`);
+      streamDeck.logger.info(`[LaunchAccount] Launching Steam with account: ${settings.personaName} (${settings.accountName})`);
       await steam.startSteam(settings.accountName);
     } else {
-      streamDeck.logger.warn(`[SwitchAccount] No account selected`);
+      streamDeck.logger.warn(`[LaunchAccount] No account selected`);
     }
   }
 }
