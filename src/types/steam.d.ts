@@ -13,11 +13,11 @@ type SteamLibraryFolders = {
   apps: string[];
 }
 
-type SteamGame = {
-  AppId: string;
-  Name: string;
-  InstallDir: string;
-  StateFlags: string;
+type SteamApp = {
+  id: string;
+  name: string;
+  installDir: string;
+  stateFlags: string;
 }
 
 type PluginGlobalSettings = {

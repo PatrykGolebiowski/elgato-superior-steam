@@ -26,10 +26,10 @@ export class RunApp extends SingletonAction<Settings> {
     // Look up and store the game name when ID changes
     if (payload.id) {
       const steam = await getSteam();
-      const steamApp = steam.getInstalledGames().find((steamApp) => steamApp.AppId.toString() === payload.id);
+      const steamApp = steam.getInstalledApps().find((steamApp) => steamApp.id.toString() === payload.id);
 
-      if (steamApp && payload.name !== steamApp.Name) {
-        await ev.action.setSettings({ ...payload, name: steamApp.Name });
+      if (steamApp && payload.name !== steamApp.name) {
+        await ev.action.setSettings({ ...payload, name: steamApp.name });
       }
     }
   }
@@ -38,9 +38,9 @@ export class RunApp extends SingletonAction<Settings> {
     // Handle datasource requests
     if (ev.payload instanceof Object && "event" in ev.payload && ev.payload.event === "installedApps") {
       const steam = await getSteam();
-      const items: DataSourceResult = steam.getInstalledGames().map((game) => ({
-        value: game.AppId,
-        label: game.Name,
+      const items: DataSourceResult = steam.getInstalledApps().map((app) => ({
+        value: app.id,
+        label: app.name,
       }));
 
       streamDeck.ui.current?.sendToPropertyInspector({

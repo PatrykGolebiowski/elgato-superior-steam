@@ -52,7 +52,7 @@ class SteamLibrary {
   private static readonly debugPrefix = "[SteamLibrary]";
 
   private _folders: SteamLibraryFolders[] = [];
-  private _installedGames: SteamGame[] = [];
+  private _installedApps: SteamApp[] = [];
 
   // Init
   private constructor() {}
@@ -68,7 +68,7 @@ class SteamLibrary {
 
   private async initialize(steamPath: string): Promise<void> {
     this._folders = await this.parseLibraryVDF(steamPath);
-    this._installedGames = await this.parseGameVDF(this._folders);
+    this._installedApps = await this.parseGameVDF(this._folders);
   }
 
   // Getters
@@ -76,8 +76,8 @@ class SteamLibrary {
     return this._folders;
   }
 
-  get installedGames(): SteamGame[] {
-    return this._installedGames;
+  get installedApps(): SteamApp[] {
+    return this._installedApps;
   }
 
   private async parseLibraryVDF(steamPath: string): Promise<SteamLibraryFolders[]> {
@@ -110,8 +110,8 @@ class SteamLibrary {
   /**
    * Parse game configurations from all library folders
    */
-  private async parseGameVDF(folders: SteamLibraryFolders[]): Promise<SteamGame[]> {
-    const games: SteamGame[] = [];
+  private async parseGameVDF(folders: SteamLibraryFolders[]): Promise<SteamApp[]> {
+    const apps: SteamApp[] = [];
 
     for (const folder of folders) {
       let manifestFiles: string[] = [];
@@ -131,22 +131,22 @@ class SteamLibrary {
         // Parse VDF structure to extract game data
         const gameData = (parsedContent as any).AppState || parsedContent;
 
-        const game: SteamGame = {
-          AppId: gameData.appid || "",
-          Name: gameData.name || "",
-          InstallDir: gameData.installdir || "",
-          StateFlags: gameData.StateFlags || "",
+        const game: SteamApp = {
+          id: gameData.appid || "",
+          name: gameData.name || "",
+          installDir: gameData.installdir || "",
+          stateFlags: gameData.StateFlags || "",
         };
 
         return game;
       });
 
-      const parsedGames = await Promise.all(gamePromises);
-      games.push(...parsedGames);
+      const parsedApps = await Promise.all(gamePromises);
+      apps.push(...parsedApps);
     }
 
-    streamDeck.logger.debug(`${SteamLibrary.debugPrefix} Total games found: ${games.length}`);
-    return games;
+    streamDeck.logger.debug(`${SteamLibrary.debugPrefix} Total apps found: ${apps.length}`);
+    return apps;
   }
 }
 
@@ -379,8 +379,8 @@ export class Steam {
     return this.library.libraryFolders;
   }
 
-  getInstalledGames(): SteamGame[] {
-    return this.library.installedGames;
+  getInstalledApps(): SteamApp[] {
+    return this.library.installedApps;
   }
 
   // Users
