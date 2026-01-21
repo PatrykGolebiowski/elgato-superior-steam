@@ -1,8 +1,6 @@
 import fs from "fs/promises";
 import path from "path";
 import open, { openApp } from "open";
-import os from "os";
-import psList from "ps-list";
 import streamDeck from "@elgato/streamdeck";
 import * as VDF from "@node-steam/vdf";
 
@@ -12,10 +10,16 @@ class SteamUserRegistry {
   private static readonly debugPrefix = "[SteamUserRegistry]";
 
   // Init
-  private constructor(private _steamExe: string, private _steamPath: string, private _autoLoginUser: string) {}
+  private constructor(
+    private _steamExe: string,
+    private _steamPath: string,
+    private _autoLoginUser: string,
+  ) {}
 
   static async create(): Promise<SteamUserRegistry> {
-    streamDeck.logger.debug(`${SteamUserRegistry.debugPrefix} Creating instance...`);
+    streamDeck.logger.debug(
+      `${SteamUserRegistry.debugPrefix} Creating instance...`,
+    );
 
     const powershell = new PowerShell();
     const registry = await powershell.readRegistryEntry({
@@ -30,7 +34,7 @@ class SteamUserRegistry {
     return new SteamUserRegistry(
       path.normalize((registry as any).SteamExe ?? ""),
       path.normalize((registry as any).SteamPath ?? ""),
-      (registry as any).AutoLoginUser ?? ""
+      (registry as any).AutoLoginUser ?? "",
     );
   }
 
@@ -80,11 +84,15 @@ class SteamLibrary {
     return this._installedApps;
   }
 
-  private async parseLibraryVDF(steamPath: string): Promise<SteamLibraryFolders[]> {
+  private async parseLibraryVDF(
+    steamPath: string,
+  ): Promise<SteamLibraryFolders[]> {
     const libraryFolders: SteamLibraryFolders[] = [];
     const vdfPath = path.join(steamPath, "steamapps", "libraryfolders.vdf");
 
-    streamDeck.logger.trace(`${SteamLibrary.debugPrefix} Library config path: ${vdfPath}`);
+    streamDeck.logger.trace(
+      `${SteamLibrary.debugPrefix} Library config path: ${vdfPath}`,
+    );
 
     const vdfFileContent = await fs.readFile(vdfPath, "utf-8");
     const parsedContent = VDF.parse(vdfFileContent) as Object;
@@ -103,14 +111,18 @@ class SteamLibrary {
         libraryFolders.push(folder);
       }
     }
-    streamDeck.logger.debug(`${SteamLibrary.debugPrefix} Found ${libraryFolders.length} library folders`);
+    streamDeck.logger.debug(
+      `${SteamLibrary.debugPrefix} Found ${libraryFolders.length} library folders`,
+    );
     return libraryFolders;
   }
 
   /**
    * Parse game configurations from all library folders
    */
-  private async parseGameVDF(folders: SteamLibraryFolders[]): Promise<SteamApp[]> {
+  private async parseGameVDF(
+    folders: SteamLibraryFolders[],
+  ): Promise<SteamApp[]> {
     const apps: SteamApp[] = [];
 
     for (const folder of folders) {
@@ -118,7 +130,9 @@ class SteamLibrary {
       const files = await fs.readdir(folder.path);
       manifestFiles = files.filter((file) => path.extname(file) === ".acf");
 
-      streamDeck.logger.debug(`${SteamLibrary.debugPrefix} Found ${manifestFiles.length} manifests in ${folder.path}`);
+      streamDeck.logger.debug(
+        `${SteamLibrary.debugPrefix} Found ${manifestFiles.length} manifests in ${folder.path}`,
+      );
 
       // Parse all manifests in parallel for performance
       const gamePromises = manifestFiles.map(async (manifest) => {
@@ -145,44 +159,52 @@ class SteamLibrary {
       apps.push(...parsedApps);
     }
 
-    streamDeck.logger.debug(`${SteamLibrary.debugPrefix} Total apps found: ${apps.length}`);
+    streamDeck.logger.debug(
+      `${SteamLibrary.debugPrefix} Total apps found: ${apps.length}`,
+    );
     return apps;
   }
 }
 
 class SteamProtocol {
   private static readonly debugPrefix = "[SteamProtocol]";
-  private powershell?: PowerShell;
+  private powershell: PowerShell;
   private steamExe: string;
 
   // Init
-  private constructor(powershell: PowerShell | undefined, steamExe: string) {
+  private constructor(powershell: PowerShell, steamExe: string) {
     this.powershell = powershell;
     this.steamExe = steamExe;
   }
 
   static async create(steamExe: string): Promise<SteamProtocol> {
-    streamDeck.logger.debug(`${SteamProtocol.debugPrefix} Creating instance...`);
+    streamDeck.logger.debug(
+      `${SteamProtocol.debugPrefix} Creating instance...`,
+    );
 
-    const powershell = os.platform() === "win32" ? new PowerShell() : undefined;
-    return new SteamProtocol(powershell, steamExe);
+    return new SteamProtocol(new PowerShell(), steamExe);
   }
 
   // Steam control
   async startSteam(accountName?: string): Promise<void> {
     if (accountName) {
-      streamDeck.logger.info(`${SteamProtocol.debugPrefix} Starting Steam as user '${accountName}'...`);
+      streamDeck.logger.info(
+        `${SteamProtocol.debugPrefix} Starting Steam as user '${accountName}'...`,
+      );
 
-      const processes = await psList();
-      const steamRunning = processes.some((process) => process.name.toLowerCase().includes("steam"));
-      streamDeck.logger.info(`${SteamProtocol.debugPrefix} Steam status: ${steamRunning}`);
+      const steamRunning = await this.isSteamRunning();
+      streamDeck.logger.info(
+        `${SteamProtocol.debugPrefix} Steam status: ${steamRunning}`,
+      );
 
       if (steamRunning) {
         this.exitSteam();
         const exited = await this.waitForSteamExit(3000); // TO DO: MAKE TIMEOUT CONFIGURABLE
 
         if (!exited) {
-          streamDeck.logger.error(`${SteamProtocol.debugPrefix} Steam failed to stop...`);
+          streamDeck.logger.error(
+            `${SteamProtocol.debugPrefix} Steam failed to stop...`,
+          );
           return;
         }
       }
@@ -201,7 +223,9 @@ class SteamProtocol {
 
   // Big Picture
   async launchBigPicture(): Promise<boolean> {
-    streamDeck.logger.debug(`${SteamProtocol.debugPrefix} Launching Big Picture mode...`);
+    streamDeck.logger.debug(
+      `${SteamProtocol.debugPrefix} Launching Big Picture mode...`,
+    );
     await open("steam://open/bigpicture");
 
     // Wait and verify launch
@@ -209,7 +233,9 @@ class SteamProtocol {
     const isRunning = await this.isBigPictureRunning();
 
     if (!isRunning) {
-      streamDeck.logger.warn(`${SteamProtocol.debugPrefix} Big Picture launch command sent, but verification failed`);
+      streamDeck.logger.warn(
+        `${SteamProtocol.debugPrefix} Big Picture launch command sent, but verification failed`,
+      );
       return false;
     }
 
@@ -217,22 +243,27 @@ class SteamProtocol {
   }
 
   exitBigPicture(): void {
-    streamDeck.logger.debug(`${SteamProtocol.debugPrefix} Exiting Big Picture mode...`);
+    streamDeck.logger.debug(
+      `${SteamProtocol.debugPrefix} Exiting Big Picture mode...`,
+    );
     open("steam://close/bigpicture");
   }
 
   async isBigPictureRunning(): Promise<boolean> {
-    if (os.platform() === "win32" && this.powershell) {
-      const processes = await this.powershell.getProcess({
-        name: "*steam**",
-        filter: "$_.MainWindowTitle -like '*big picture*'",
-        properties: ["Name", "ProcessName", "MainWindowTitle"],
-      });
-      return processes.length > 0;
-    } else {
-      const processes = await psList();
-      return processes.some((process) => process.name.toLowerCase().includes("big picture")); // TO DO: CHECK BIG PICTURE PROCESS NAME ON MACOS
-    }
+    const processes = await this.powershell.getProcess({
+      name: "*steam**",
+      filter: "$_.MainWindowTitle -like '*big picture*'",
+      properties: ["Name", "ProcessName", "MainWindowTitle"],
+    });
+    return processes.length > 0;
+  }
+
+  private async isSteamRunning(): Promise<boolean> {
+    const processes = await this.powershell.getProcess({
+      name: "*steam*",
+      properties: ["Name"],
+    });
+    return processes.length > 0;
   }
 
   // Friends and status
@@ -254,8 +285,7 @@ class SteamProtocol {
     const startTime = Date.now();
 
     while (Date.now() - startTime < timeoutMs) {
-      const processes = await psList();
-      const steamRunning = processes.some((process) => process.name.toLowerCase().includes("steam"));
+      const steamRunning = await this.isSteamRunning();
 
       if (!steamRunning) {
         return true;
@@ -293,10 +323,18 @@ class SteamUsers {
     this._loggedInUsers = await this.parseUsersVDF(steamPath);
   }
 
-  private async getUserAvatar(steamPath: string, steamId64: string): Promise<string> {
+  private async getUserAvatar(
+    steamPath: string,
+    steamId64: string,
+  ): Promise<string> {
     let base64: string = "";
 
-    const avatarPath = path.join(steamPath, "config", "avatarcache", `${steamId64}.png`);
+    const avatarPath = path.join(
+      steamPath,
+      "config",
+      "avatarcache",
+      `${steamId64}.png`,
+    );
     base64 = await fs.readFile(avatarPath, "base64");
 
     return `data:image/png;base64,${base64}`;
@@ -307,27 +345,33 @@ class SteamUsers {
     let vdfFileContent: string = "";
 
     const vdfPath = path.join(steamPath, "config", "loginusers.vdf");
-    streamDeck.logger.debug(`${SteamUsers.debugPrefix} Config path: ${vdfPath}`);
+    streamDeck.logger.debug(
+      `${SteamUsers.debugPrefix} Config path: ${vdfPath}`,
+    );
 
     try {
       vdfFileContent = await fs.readFile(vdfPath, "utf-8");
     } catch (error) {
-      streamDeck.logger.error(`${SteamUsers.debugPrefix} Failed to read: ${vdfPath}`);
+      streamDeck.logger.error(
+        `${SteamUsers.debugPrefix} Failed to read: ${vdfPath}`,
+      );
       return [];
     }
 
     const parsedContent = VDF.parse(vdfFileContent) as Object;
     const usersData = (parsedContent as any).users || parsedContent;
 
-    const userPromises = Object.entries(usersData).map(async ([steamId64, value]) => {
-      const entry = value as any;
-      return {
-        steamId64: steamId64,
-        accountName: entry.AccountName || "",
-        personaName: entry.PersonaName || "",
-        avatarBase64: await this.getUserAvatar(steamPath, steamId64),
-      };
-    });
+    const userPromises = Object.entries(usersData).map(
+      async ([steamId64, value]) => {
+        const entry = value as any;
+        return {
+          steamId64: steamId64,
+          accountName: entry.AccountName || "",
+          personaName: entry.PersonaName || "",
+          avatarBase64: await this.getUserAvatar(steamPath, steamId64),
+        };
+      },
+    );
 
     loggedInUsers = await Promise.all(userPromises);
     return loggedInUsers;
@@ -343,7 +387,12 @@ export class Steam {
   private protocol: SteamProtocol;
 
   // Init
-  private constructor(registry: SteamUserRegistry, library: SteamLibrary, users: SteamUsers, protocol: SteamProtocol) {
+  private constructor(
+    registry: SteamUserRegistry,
+    library: SteamLibrary,
+    users: SteamUsers,
+    protocol: SteamProtocol,
+  ) {
     this.registry = registry;
     this.library = library;
     this.users = users;
