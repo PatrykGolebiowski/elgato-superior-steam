@@ -9,7 +9,9 @@
       "Icon": "imgs/actions/steam/x",
       "Tooltip": "Manage Steam's Big Picture mode.",
       "PropertyInspectorPath": "ui/increment-counter.html",
-      "Controllers": ["Keypad"],
+      "Controllers": [
+        "Keypad"
+      ],
       "States": [
         {
           "Image": "imgs/actions/steam/deck_boot",
@@ -23,7 +25,9 @@
       "Icon": "imgs/actions/steam/y",
       "Tooltip": "Manage Steam's status.",
       "PropertyInspectorPath": "ui/increment-counter.html",
-      "Controllers": ["Keypad"],
+      "Controllers": [
+        "Keypad"
+      ],
       "States": [
         {
           "Image": "imgs/actions/steam/y",
@@ -37,7 +41,9 @@
       "Icon": "imgs/actions/steam/y",
       "Tooltip": "Installed Steam games.",
       "PropertyInspectorPath": "ui/run-app.html",
-      "Controllers": ["Keypad"],
+      "Controllers": [
+        "Keypad"
+      ],
       "States": [
         {
           "Image": "imgs/actions/steam/y",
@@ -51,7 +57,9 @@
       "Icon": "imgs/actions/steam/default_user",
       "Tooltip": "Launch Steam with a specific account.",
       "PropertyInspectorPath": "ui/launch-account.html",
-      "Controllers": ["Keypad"],
+      "Controllers": [
+        "Keypad"
+      ],
       "States": [
         {
           "Image": "imgs/actions/steam/default_user",
@@ -70,10 +78,6 @@
     "MinimumVersion": "6.5"
   },
   "OS": [
-    {
-      "Platform": "mac",
-      "MinimumVersion": "12"
-    },
     {
       "Platform": "windows",
       "MinimumVersion": "10"
