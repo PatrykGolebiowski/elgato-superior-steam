@@ -243,7 +243,7 @@ class SteamLibrary {
           id: Number(gameData.appid) || 0,
           name: gameData.name || "",
           installDir: gameData.installdir || "",
-          stateFlags: gameData.StateFlags || "",
+          stateFlags: Number(gameData.StateFlags) || 0,
         };
 
         return game;
@@ -614,5 +614,10 @@ export class Steam {
   // Library - Icons
   async getAppIconBase64(appId: string): Promise<string | null> {
     return this.library.getAppIconBase64(appId);
+  }
+
+  // Library - App lookup
+  getAppById(appId: string): SteamApp | undefined {
+    return this.library.installedApps.find((a) => a.id.toString() === appId);
   }
 }
