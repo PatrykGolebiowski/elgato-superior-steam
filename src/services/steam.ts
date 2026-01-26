@@ -166,6 +166,61 @@ class SteamLibrary {
   }
 }
 
+class SteamApi {
+  private static readonly debugPrefix = "[SteamApi]";
+  private static readonly baseUrl = "https://api.steampowered.com";
+  private static readonly cdnUrl =
+    "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps";
+
+  async getAppIconBase64(appId: string): Promise<string | null> {
+    try {
+      const url = `${SteamApi.baseUrl}/ICommunityService/GetApps/v1/?appids%5B0%5D=${appId}`;
+      streamDeck.logger.debug(
+        `${SteamApi.debugPrefix} Fetching icon for app ${appId}`,
+      );
+
+      const response = await fetch(url);
+      if (!response.ok) {
+        streamDeck.logger.warn(
+          `${SteamApi.debugPrefix} Failed to fetch app info: ${response.status}`,
+        );
+        return null;
+      }
+
+      const data = (await response.json()) as {
+        response?: { apps?: { icon?: string }[] };
+      };
+      const icon = data?.response?.apps?.[0]?.icon;
+
+      if (!icon) {
+        streamDeck.logger.warn(
+          `${SteamApi.debugPrefix} No icon found for app ${appId}`,
+        );
+        return null;
+      }
+
+      // Fetch the image and convert to base64
+      const imageUrl = `${SteamApi.cdnUrl}/${appId}/${icon}.jpg`;
+      const imageResponse = await fetch(imageUrl);
+      if (!imageResponse.ok) {
+        streamDeck.logger.warn(
+          `${SteamApi.debugPrefix} Failed to fetch icon image: ${imageResponse.status}`,
+        );
+        return null;
+      }
+
+      const imageBuffer = await imageResponse.arrayBuffer();
+      const base64 = Buffer.from(imageBuffer).toString("base64");
+      return `data:image/jpeg;base64,${base64}`;
+    } catch (error) {
+      streamDeck.logger.error(
+        `${SteamApi.debugPrefix} Error fetching app icon: ${error}`,
+      );
+      return null;
+    }
+  }
+}
+
 class SteamProtocol {
   private static readonly debugPrefix = "[SteamProtocol]";
   private powershell: PowerShell;
@@ -385,6 +440,7 @@ export class Steam {
   private library: SteamLibrary;
   private users: SteamUsers;
   private protocol: SteamProtocol;
+  private api: SteamApi;
 
   // Init
   private constructor(
@@ -392,11 +448,13 @@ export class Steam {
     library: SteamLibrary,
     users: SteamUsers,
     protocol: SteamProtocol,
+    api: SteamApi,
   ) {
     this.registry = registry;
     this.library = library;
     this.users = users;
     this.protocol = protocol;
+    this.api = api;
   }
 
   static async create(): Promise<Steam> {
@@ -406,8 +464,9 @@ export class Steam {
     const library = await SteamLibrary.create(registry.steamPath);
     const users = await SteamUsers.create(registry.steamPath);
     const protocol = await SteamProtocol.create(registry.steamExe);
+    const api = new SteamApi();
 
-    return new Steam(registry, library, users, protocol);
+    return new Steam(registry, library, users, protocol, api);
   }
 
   // Registry
@@ -470,5 +529,10 @@ export class Steam {
 
   launchApp(id: string): void {
     this.protocol.launchApp(id);
+  }
+
+  // API
+  async getAppIconBase64(appId: string): Promise<string | null> {
+    return this.api.getAppIconBase64(appId);
   }
 }
