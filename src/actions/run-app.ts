@@ -1,11 +1,11 @@
 import streamDeck, {
   action,
   KeyDownEvent,
-  KeyUpEvent,
   SingletonAction,
   JsonValue,
   DidReceiveSettingsEvent,
   SendToPluginEvent,
+  WillAppearEvent,
 } from "@elgato/streamdeck";
 import { DataSourcePayload, DataSourceResult } from "../types/sdpi";
 import { getSteam } from "../services/steam-singleton";
@@ -20,6 +20,25 @@ type Settings = {
  */
 @action({ UUID: "com.humhunch.superior-steam.run-app" })
 export class RunApp extends SingletonAction<Settings> {
+  override async onWillAppear(ev: WillAppearEvent<Settings>): Promise<void> {
+    const payload = ev.payload.settings;
+
+    // Restore the app icon when the action appears
+    if (payload.id) {
+      try {
+        const steam = await getSteam();
+        const iconBase64 = await steam.getAppIconBase64(payload.id);
+        if (iconBase64) {
+          await ev.action.setImage(iconBase64);
+        }
+      } catch (error) {
+        streamDeck.logger.error(
+          `[RunApp] Failed to restore app icon: ${error}`,
+        );
+      }
+    }
+  }
+
   override async onDidReceiveSettings(
     ev: DidReceiveSettingsEvent<Settings>,
   ): Promise<void> {
