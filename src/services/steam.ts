@@ -4,6 +4,7 @@ import open, { openApp } from "open";
 import streamDeck from "@elgato/streamdeck";
 import * as VDF from "@node-steam/vdf";
 import decodeIco from "decode-ico";
+import UPNG from "upng-js";
 
 import { PowerShell } from "./powershell";
 
@@ -56,22 +57,32 @@ class SteamUserRegistry {
 class SteamLibrary {
   private static readonly debugPrefix = "[SteamLibrary]";
 
+  // Icons to skip (no proper icon available)
+  private static readonly iconExceptions = new Set([
+    "SteamMovie", // Not a game icon
+  ]);
+
   private _folders: SteamLibraryFolders[] = [];
   private _installedApps: SteamApp[] = [];
+  private _steamPath: string = "";
+  private _api: SteamCMD;
 
   // Init
-  private constructor() {}
+  private constructor(api: SteamCMD) {
+    this._api = api;
+  }
 
-  static async create(steamPath: string): Promise<SteamLibrary> {
+  static async create(steamPath: string, api: SteamCMD): Promise<SteamLibrary> {
     streamDeck.logger.debug(`${SteamLibrary.debugPrefix} Creating instance...`);
 
-    const library = new SteamLibrary();
+    const library = new SteamLibrary(api);
     await library.initialize(steamPath);
 
     return library;
   }
 
   private async initialize(steamPath: string): Promise<void> {
+    this._steamPath = steamPath;
     this._folders = await this.parseLibraryVDF(steamPath);
     this._installedApps = await this.parseGameVDF(this._folders);
   }
@@ -83,6 +94,81 @@ class SteamLibrary {
 
   get installedApps(): SteamApp[] {
     return this._installedApps;
+  }
+
+  async getAppIconBase64(appId: string): Promise<string | null> {
+    try {
+      // Get clienticon hash from API
+      const clientIconHash = await this._api.getClientIconHash(appId);
+      if (!clientIconHash) {
+        return null;
+      }
+
+      // Skip known problematic icons
+      if (SteamLibrary.iconExceptions.has(clientIconHash)) {
+        streamDeck.logger.debug(
+          `${SteamLibrary.debugPrefix} Skipping icon ${clientIconHash} (in exception list)`,
+        );
+        return null;
+      }
+
+      // Read .ico from local Steam folder
+      const icoPath = path.join(
+        this._steamPath,
+        "steam",
+        "games",
+        `${clientIconHash}.ico`,
+      );
+
+      streamDeck.logger.debug(
+        `${SteamLibrary.debugPrefix} Reading icon from: ${icoPath}`,
+      );
+
+      const icoBuffer = await fs.readFile(icoPath);
+
+      // Decode ICO and find the largest image
+      const images = decodeIco(new Uint8Array(icoBuffer));
+
+      if (images.length === 0) {
+        streamDeck.logger.warn(
+          `${SteamLibrary.debugPrefix} No icons found for app ${appId}`,
+        );
+        return null;
+      }
+
+      // Find the largest image (prefer PNG, but accept BMP)
+      const largest = images.reduce((max, img) =>
+        img.width > max.width ? img : max,
+      );
+
+      streamDeck.logger.debug(
+        `${SteamLibrary.debugPrefix} Using ${largest.width}x${largest.height} ${largest.type.toUpperCase()} icon`,
+      );
+
+      let pngData: Uint8Array;
+      if (largest.type === "png") {
+        // PNG data is already encoded
+        pngData = largest.data;
+      } else {
+        // BMP data is raw RGBA pixels - encode to PNG
+        const rgba = new Uint8Array(largest.data);
+        const encoded = UPNG.encode(
+          [rgba.buffer],
+          largest.width,
+          largest.height,
+          0,
+        );
+        pngData = new Uint8Array(encoded);
+      }
+
+      const base64 = Buffer.from(pngData).toString("base64");
+      return `data:image/png;base64,${base64}`;
+    } catch (error) {
+      streamDeck.logger.error(
+        `${SteamLibrary.debugPrefix} Error getting app icon: ${error}`,
+      );
+      return null;
+    }
   }
 
   private async parseLibraryVDF(
@@ -448,10 +534,10 @@ export class Steam {
     streamDeck.logger.debug(`${Steam.debugPrefix} Creating instance...`);
 
     const registry = await SteamUserRegistry.create();
-    const library = await SteamLibrary.create(registry.steamPath);
+    const api = new SteamCMD();
+    const library = await SteamLibrary.create(registry.steamPath, api);
     const users = await SteamUsers.create(registry.steamPath);
     const protocol = await SteamProtocol.create(registry.steamExe);
-    const api = new SteamCMD();
 
     return new Steam(registry, library, users, protocol, api);
   }
@@ -518,62 +604,8 @@ export class Steam {
     this.protocol.launchApp(id);
   }
 
-  // Icons to skip (no proper PNG available)
-  private static readonly iconExceptions = new Set([
-    "SteamMovie", // Not a game icon
-  ]);
-
-  // API
+  // Library - Icons
   async getAppIconBase64(appId: string): Promise<string | null> {
-    try {
-      // Get clienticon hash from API
-      const clientIconHash = await this.api.getClientIconHash(appId);
-      if (!clientIconHash) {
-        return null;
-      }
-
-      // Skip known problematic icons
-      if (Steam.iconExceptions.has(clientIconHash)) {
-        streamDeck.logger.debug(
-          `[Steam] Skipping icon ${clientIconHash} (in exception list)`,
-        );
-        return null;
-      }
-
-      // Read .ico from local Steam folder
-      const icoPath = path.join(
-        this.registry.steamPath,
-        "steam",
-        "games",
-        `${clientIconHash}.ico`,
-      );
-
-      streamDeck.logger.debug(`[Steam] Reading icon from: ${icoPath}`);
-
-      const icoBuffer = await fs.readFile(icoPath);
-
-      // Decode ICO and find the largest PNG image
-      const images = decodeIco(new Uint8Array(icoBuffer));
-      const pngImages = images.filter((img) => img.type === "png");
-
-      if (pngImages.length === 0) {
-        streamDeck.logger.warn(`[Steam] No PNG icons found for app ${appId}`);
-        return null;
-      }
-
-      const largest = pngImages.reduce((max, img) =>
-        img.width > max.width ? img : max,
-      );
-
-      streamDeck.logger.debug(
-        `[Steam] Using ${largest.width}x${largest.height} PNG icon`,
-      );
-
-      const base64 = Buffer.from(largest.data).toString("base64");
-      return `data:image/png;base64,${base64}`;
-    } catch (error) {
-      streamDeck.logger.error(`[Steam] Error getting app icon: ${error}`);
-      return null;
-    }
+    return this.library.getAppIconBase64(appId);
   }
 }
