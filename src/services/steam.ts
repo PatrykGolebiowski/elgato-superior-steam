@@ -8,6 +8,8 @@ import UPNG from "upng-js";
 
 import { PowerShell } from "./powershell";
 
+import { SteamCMD } from "./steam-cmd";
+
 class SteamUserRegistry {
   private static readonly debugPrefix = "[SteamUserRegistry]";
 
@@ -70,11 +72,11 @@ class SteamLibrary {
   private _folders: SteamLibraryFolders[] = [];
   private _installedApps: SteamApp[] = [];
   private _steamPath: string = "";
-  private _api: SteamCMD;
+  private _steam_cmd: SteamCMD;
 
   // Init
   private constructor(api: SteamCMD) {
-    this._api = api;
+    this._steam_cmd = api;
   }
 
   static async create(steamPath: string, api: SteamCMD): Promise<SteamLibrary> {
@@ -106,7 +108,8 @@ class SteamLibrary {
   async getAppIconBase64(appId: string): Promise<string | null> {
     try {
       // Get clienticon hash from API
-      const clientIconHash = await this._api.getClientIconHash(appId);
+      const app = await this._steam_cmd.getApp(appId);
+      const clientIconHash = app?.common.clienticon;
       if (!clientIconHash) {
         return null;
       }
@@ -257,47 +260,6 @@ class SteamLibrary {
       `${SteamLibrary.debugPrefix} Total apps found: ${apps.length}`,
     );
     return apps;
-  }
-}
-
-class SteamCMD {
-  private static readonly debugPrefix = "[SteamCMD]";
-  private static readonly steamCmdApiUrl = "https://api.steamcmd.net/v1/info";
-
-  async getClientIconHash(appId: string): Promise<string | null> {
-    try {
-      streamDeck.logger.debug(
-        `${SteamCMD.debugPrefix} Fetching clienticon hash for app ${appId}`,
-      );
-
-      const response = await fetch(`${SteamCMD.steamCmdApiUrl}/${appId}`);
-      if (!response.ok) {
-        streamDeck.logger.warn(
-          `${SteamCMD.debugPrefix} Failed to fetch app info: ${response.status}`,
-        );
-        return null;
-      }
-
-      const data = (await response.json()) as {
-        status?: string;
-        data?: { [appId: string]: { common?: { clienticon?: string } } };
-      };
-
-      const clienticon = data?.data?.[appId]?.common?.clienticon;
-      if (!clienticon) {
-        streamDeck.logger.warn(
-          `${SteamCMD.debugPrefix} No clienticon found for app ${appId}`,
-        );
-        return null;
-      }
-
-      return clienticon;
-    } catch (error) {
-      streamDeck.logger.error(
-        `${SteamCMD.debugPrefix} Error fetching clienticon hash: ${error}`,
-      );
-      return null;
-    }
   }
 }
 
