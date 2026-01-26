@@ -19,6 +19,7 @@
   "dependencies": {
     "@elgato/streamdeck": "^1.0.0",
     "@node-steam/vdf": "^2.2.0",
+    "decode-ico": "^0.4.1",
     "open": "^10.2.0"
   }
 }
