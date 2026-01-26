@@ -9,6 +9,10 @@ import streamDeck, {
 } from "@elgato/streamdeck";
 import { DataSourcePayload, DataSourceResult } from "../types/sdpi";
 import { getSteam } from "../services/steam-singleton";
+import {
+  compositeAppIcon,
+  getCompositeOptionsFromStateFlags,
+} from "../services/image-compositor";
 
 type Settings = {
   name: string;
@@ -23,12 +27,24 @@ export class RunApp extends SingletonAction<Settings> {
   override async onWillAppear(ev: WillAppearEvent<Settings>): Promise<void> {
     const payload = ev.payload.settings;
 
-    // Restore the app icon when the action appears
+    // Restore the app icon when the action appears (with state-based effects)
     if (payload.id) {
       try {
         const steam = await getSteam();
-        const iconBase64 = await steam.getAppIconBase64(payload.id);
+        let iconBase64 = await steam.getAppIconBase64(payload.id);
+
         if (iconBase64) {
+          // Apply state-based visual effects
+          const app = steam.getAppById(payload.id);
+          if (app) {
+            const compositeOptions = getCompositeOptionsFromStateFlags(
+              app.stateFlags,
+            );
+            if (compositeOptions) {
+              iconBase64 = compositeAppIcon(iconBase64, compositeOptions);
+            }
+          }
+
           await ev.action.setImage(iconBase64);
         }
       } catch (error) {
@@ -55,10 +71,22 @@ export class RunApp extends SingletonAction<Settings> {
         await ev.action.setSettings({ ...payload, name: steamApp.name });
       }
 
-      // Set the app icon
+      // Set the app icon (with state-based effects)
       try {
-        const iconBase64 = await steam.getAppIconBase64(payload.id);
+        let iconBase64 = await steam.getAppIconBase64(payload.id);
+
         if (iconBase64) {
+          // Apply state-based visual effects
+          const app = steam.getAppById(payload.id);
+          if (app) {
+            const compositeOptions = getCompositeOptionsFromStateFlags(
+              app.stateFlags,
+            );
+            if (compositeOptions) {
+              iconBase64 = compositeAppIcon(iconBase64, compositeOptions);
+            }
+          }
+
           await ev.action.setImage(iconBase64);
         }
       } catch (error) {
