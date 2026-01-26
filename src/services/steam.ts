@@ -57,6 +57,11 @@ class SteamUserRegistry {
 class SteamLibrary {
   private static readonly debugPrefix = "[SteamLibrary]";
 
+  // Apps to exclude from installed apps list
+  private static readonly appExceptions = new Set<number>([
+    228980, // Steamworks Common Redistributables
+  ]);
+
   // Icons to skip (no proper icon available)
   private static readonly iconExceptions = new Set([
     "SteamMovie", // Not a game icon
@@ -93,7 +98,9 @@ class SteamLibrary {
   }
 
   get installedApps(): SteamApp[] {
-    return this._installedApps;
+    return this._installedApps.filter(
+      (app) => !SteamLibrary.appExceptions.has(app.id),
+    );
   }
 
   async getAppIconBase64(appId: string): Promise<string | null> {
@@ -233,7 +240,7 @@ class SteamLibrary {
         const gameData = (parsedContent as any).AppState || parsedContent;
 
         const game: SteamApp = {
-          id: gameData.appid || "",
+          id: Number(gameData.appid) || 0,
           name: gameData.name || "",
           installDir: gameData.installdir || "",
           stateFlags: gameData.StateFlags || "",
