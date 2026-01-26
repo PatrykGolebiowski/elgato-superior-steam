@@ -1,14 +1,18 @@
 import streamDeck, {
   action,
   KeyDownEvent,
-  KeyUpEvent,
   SingletonAction,
   JsonValue,
   DidReceiveSettingsEvent,
   SendToPluginEvent,
+  WillAppearEvent,
 } from "@elgato/streamdeck";
 import { DataSourcePayload, DataSourceResult } from "../types/sdpi";
 import { getSteam } from "../services/steam-singleton";
+import {
+  compositeAppIcon,
+  getCompositeOptionsFromStateFlags,
+} from "../services/image-compositor";
 
 type Settings = {
   name: string;
@@ -20,26 +24,89 @@ type Settings = {
  */
 @action({ UUID: "com.humhunch.superior-steam.run-app" })
 export class RunApp extends SingletonAction<Settings> {
-  override async onDidReceiveSettings(ev: DidReceiveSettingsEvent<Settings>): Promise<void> {
+  override async onWillAppear(ev: WillAppearEvent<Settings>): Promise<void> {
+    const payload = ev.payload.settings;
+
+    // Restore the app icon when the action appears (with state-based effects)
+    if (payload.id) {
+      try {
+        const steam = await getSteam();
+        let iconBase64 = await steam.getAppIconBase64(payload.id);
+
+        if (iconBase64) {
+          // Apply state-based visual effects
+          const app = steam.getAppById(payload.id);
+          if (app) {
+            const compositeOptions = getCompositeOptionsFromStateFlags(
+              app.stateFlags,
+            );
+            if (compositeOptions) {
+              iconBase64 = compositeAppIcon(iconBase64, compositeOptions);
+            }
+          }
+
+          await ev.action.setImage(iconBase64);
+        }
+      } catch (error) {
+        streamDeck.logger.error(
+          `[RunApp] Failed to restore app icon: ${error}`,
+        );
+      }
+    }
+  }
+
+  override async onDidReceiveSettings(
+    ev: DidReceiveSettingsEvent<Settings>,
+  ): Promise<void> {
     const payload = ev.payload.settings;
 
     // Look up and store the game name when ID changes
     if (payload.id) {
       const steam = await getSteam();
-      const steamApp = steam.getInstalledApps().find((steamApp) => steamApp.id.toString() === payload.id);
+      const steamApp = steam
+        .getInstalledApps()
+        .find((steamApp) => steamApp.id.toString() === payload.id);
 
       if (steamApp && payload.name !== steamApp.name) {
         await ev.action.setSettings({ ...payload, name: steamApp.name });
       }
+
+      // Set the app icon (with state-based effects)
+      try {
+        let iconBase64 = await steam.getAppIconBase64(payload.id);
+
+        if (iconBase64) {
+          // Apply state-based visual effects
+          const app = steam.getAppById(payload.id);
+          if (app) {
+            const compositeOptions = getCompositeOptionsFromStateFlags(
+              app.stateFlags,
+            );
+            if (compositeOptions) {
+              iconBase64 = compositeAppIcon(iconBase64, compositeOptions);
+            }
+          }
+
+          await ev.action.setImage(iconBase64);
+        }
+      } catch (error) {
+        streamDeck.logger.error(`[RunApp] Failed to set app icon: ${error}`);
+      }
     }
   }
 
-  override async onSendToPlugin(ev: SendToPluginEvent<JsonValue, Settings>): Promise<void> {
+  override async onSendToPlugin(
+    ev: SendToPluginEvent<JsonValue, Settings>,
+  ): Promise<void> {
     // Handle datasource requests
-    if (ev.payload instanceof Object && "event" in ev.payload && ev.payload.event === "installedApps") {
+    if (
+      ev.payload instanceof Object &&
+      "event" in ev.payload &&
+      ev.payload.event === "installedApps"
+    ) {
       const steam = await getSteam();
       const items: DataSourceResult = steam.getInstalledApps().map((app) => ({
-        value: app.id,
+        value: String(app.id),
         label: app.name,
       }));
 
@@ -55,7 +122,9 @@ export class RunApp extends SingletonAction<Settings> {
     const settings = ev.payload.settings;
 
     if (settings.id) {
-      streamDeck.logger.info(`[RunApp] Launching app: ${settings.name} (${settings.id})`);
+      streamDeck.logger.info(
+        `[RunApp] Launching app: ${settings.name} (${settings.id})`,
+      );
       steam.launchApp(settings.id);
     } else {
       streamDeck.logger.warn(`[RunApp] No app selected`);

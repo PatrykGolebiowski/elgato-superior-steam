@@ -3,6 +3,8 @@ import path from "path";
 import open, { openApp } from "open";
 import streamDeck from "@elgato/streamdeck";
 import * as VDF from "@node-steam/vdf";
+import decodeIco from "decode-ico";
+import UPNG from "upng-js";
 
 import { PowerShell } from "./powershell";
 
@@ -55,22 +57,37 @@ class SteamUserRegistry {
 class SteamLibrary {
   private static readonly debugPrefix = "[SteamLibrary]";
 
+  // Apps to exclude from installed apps list
+  private static readonly appExceptions = new Set<number>([
+    228980, // Steamworks Common Redistributables
+  ]);
+
+  // Icons to skip (no proper icon available)
+  private static readonly iconExceptions = new Set([
+    "SteamMovie", // Not a game icon
+  ]);
+
   private _folders: SteamLibraryFolders[] = [];
   private _installedApps: SteamApp[] = [];
+  private _steamPath: string = "";
+  private _api: SteamCMD;
 
   // Init
-  private constructor() {}
+  private constructor(api: SteamCMD) {
+    this._api = api;
+  }
 
-  static async create(steamPath: string): Promise<SteamLibrary> {
+  static async create(steamPath: string, api: SteamCMD): Promise<SteamLibrary> {
     streamDeck.logger.debug(`${SteamLibrary.debugPrefix} Creating instance...`);
 
-    const library = new SteamLibrary();
+    const library = new SteamLibrary(api);
     await library.initialize(steamPath);
 
     return library;
   }
 
   private async initialize(steamPath: string): Promise<void> {
+    this._steamPath = steamPath;
     this._folders = await this.parseLibraryVDF(steamPath);
     this._installedApps = await this.parseGameVDF(this._folders);
   }
@@ -81,7 +98,84 @@ class SteamLibrary {
   }
 
   get installedApps(): SteamApp[] {
-    return this._installedApps;
+    return this._installedApps.filter(
+      (app) => !SteamLibrary.appExceptions.has(app.id),
+    );
+  }
+
+  async getAppIconBase64(appId: string): Promise<string | null> {
+    try {
+      // Get clienticon hash from API
+      const clientIconHash = await this._api.getClientIconHash(appId);
+      if (!clientIconHash) {
+        return null;
+      }
+
+      // Skip known problematic icons
+      if (SteamLibrary.iconExceptions.has(clientIconHash)) {
+        streamDeck.logger.debug(
+          `${SteamLibrary.debugPrefix} Skipping icon ${clientIconHash} (in exception list)`,
+        );
+        return null;
+      }
+
+      // Read .ico from local Steam folder
+      const icoPath = path.join(
+        this._steamPath,
+        "steam",
+        "games",
+        `${clientIconHash}.ico`,
+      );
+
+      streamDeck.logger.debug(
+        `${SteamLibrary.debugPrefix} Reading icon from: ${icoPath}`,
+      );
+
+      const icoBuffer = await fs.readFile(icoPath);
+
+      // Decode ICO and find the largest image
+      const images = decodeIco(new Uint8Array(icoBuffer));
+
+      if (images.length === 0) {
+        streamDeck.logger.warn(
+          `${SteamLibrary.debugPrefix} No icons found for app ${appId}`,
+        );
+        return null;
+      }
+
+      // Find the largest image (prefer PNG, but accept BMP)
+      const largest = images.reduce((max, img) =>
+        img.width > max.width ? img : max,
+      );
+
+      streamDeck.logger.debug(
+        `${SteamLibrary.debugPrefix} Using ${largest.width}x${largest.height} ${largest.type.toUpperCase()} icon`,
+      );
+
+      let pngData: Uint8Array;
+      if (largest.type === "png") {
+        // PNG data is already encoded
+        pngData = largest.data;
+      } else {
+        // BMP data is raw RGBA pixels - encode to PNG
+        const rgba = new Uint8Array(largest.data);
+        const encoded = UPNG.encode(
+          [rgba.buffer],
+          largest.width,
+          largest.height,
+          0,
+        );
+        pngData = new Uint8Array(encoded);
+      }
+
+      const base64 = Buffer.from(pngData).toString("base64");
+      return `data:image/png;base64,${base64}`;
+    } catch (error) {
+      streamDeck.logger.error(
+        `${SteamLibrary.debugPrefix} Error getting app icon: ${error}`,
+      );
+      return null;
+    }
   }
 
   private async parseLibraryVDF(
@@ -146,10 +240,10 @@ class SteamLibrary {
         const gameData = (parsedContent as any).AppState || parsedContent;
 
         const game: SteamApp = {
-          id: gameData.appid || "",
+          id: Number(gameData.appid) || 0,
           name: gameData.name || "",
           installDir: gameData.installdir || "",
-          stateFlags: gameData.StateFlags || "",
+          stateFlags: Number(gameData.StateFlags) || 0,
         };
 
         return game;
@@ -163,6 +257,47 @@ class SteamLibrary {
       `${SteamLibrary.debugPrefix} Total apps found: ${apps.length}`,
     );
     return apps;
+  }
+}
+
+class SteamCMD {
+  private static readonly debugPrefix = "[SteamCMD]";
+  private static readonly steamCmdApiUrl = "https://api.steamcmd.net/v1/info";
+
+  async getClientIconHash(appId: string): Promise<string | null> {
+    try {
+      streamDeck.logger.debug(
+        `${SteamCMD.debugPrefix} Fetching clienticon hash for app ${appId}`,
+      );
+
+      const response = await fetch(`${SteamCMD.steamCmdApiUrl}/${appId}`);
+      if (!response.ok) {
+        streamDeck.logger.warn(
+          `${SteamCMD.debugPrefix} Failed to fetch app info: ${response.status}`,
+        );
+        return null;
+      }
+
+      const data = (await response.json()) as {
+        status?: string;
+        data?: { [appId: string]: { common?: { clienticon?: string } } };
+      };
+
+      const clienticon = data?.data?.[appId]?.common?.clienticon;
+      if (!clienticon) {
+        streamDeck.logger.warn(
+          `${SteamCMD.debugPrefix} No clienticon found for app ${appId}`,
+        );
+        return null;
+      }
+
+      return clienticon;
+    } catch (error) {
+      streamDeck.logger.error(
+        `${SteamCMD.debugPrefix} Error fetching clienticon hash: ${error}`,
+      );
+      return null;
+    }
   }
 }
 
@@ -385,6 +520,7 @@ export class Steam {
   private library: SteamLibrary;
   private users: SteamUsers;
   private protocol: SteamProtocol;
+  private api: SteamCMD;
 
   // Init
   private constructor(
@@ -392,22 +528,25 @@ export class Steam {
     library: SteamLibrary,
     users: SteamUsers,
     protocol: SteamProtocol,
+    api: SteamCMD,
   ) {
     this.registry = registry;
     this.library = library;
     this.users = users;
     this.protocol = protocol;
+    this.api = api;
   }
 
   static async create(): Promise<Steam> {
     streamDeck.logger.debug(`${Steam.debugPrefix} Creating instance...`);
 
     const registry = await SteamUserRegistry.create();
-    const library = await SteamLibrary.create(registry.steamPath);
+    const api = new SteamCMD();
+    const library = await SteamLibrary.create(registry.steamPath, api);
     const users = await SteamUsers.create(registry.steamPath);
     const protocol = await SteamProtocol.create(registry.steamExe);
 
-    return new Steam(registry, library, users, protocol);
+    return new Steam(registry, library, users, protocol, api);
   }
 
   // Registry
@@ -470,5 +609,15 @@ export class Steam {
 
   launchApp(id: string): void {
     this.protocol.launchApp(id);
+  }
+
+  // Library - Icons
+  async getAppIconBase64(appId: string): Promise<string | null> {
+    return this.library.getAppIconBase64(appId);
+  }
+
+  // Library - App lookup
+  getAppById(appId: string): SteamApp | undefined {
+    return this.library.installedApps.find((a) => a.id.toString() === appId);
   }
 }
