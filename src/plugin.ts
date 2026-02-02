@@ -7,7 +7,7 @@ import streamDeck, {
 import { BigPicture } from "./actions/big-picture";
 import { LaunchAccount } from "./actions/launch-account";
 import { App } from "./actions/app";
-import { resetSteam } from "./services/steam-singleton";
+import { getSteam, resetSteam } from "./services/steam-singleton";
 import { Status } from "./actions/status";
 
 // "trace" logging so that all messages between the Stream Deck, and the plugin are recorded.
@@ -35,4 +35,13 @@ streamDeck.system.onApplicationDidTerminate(
 );
 
 // Connect to Stream Deck and initialize Steam library
-streamDeck.connect().then(async () => {});
+streamDeck.connect().then(async () => {
+  try {
+    // Initialize Steam and start monitoring for running apps
+    const steam = await getSteam();
+    steam.startMonitoring();
+    streamDeck.logger.info("Steam monitoring started");
+  } catch (error) {
+    streamDeck.logger.error(`Failed to start Steam monitoring: ${error}`);
+  }
+});

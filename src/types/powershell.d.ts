@@ -75,4 +75,5 @@ type Process = {
   ProcessName: string;
   Id: number;
   MainWindowTitle?: string;
+  Path?: string;
 };

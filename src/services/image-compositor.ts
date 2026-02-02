@@ -10,6 +10,10 @@ export interface CompositeOptions {
   grayscale?: boolean;
   badge?: BadgeType;
   badgePosition?: BadgePosition;
+  border?: {
+    color: string;
+    width: number;
+  };
 }
 
 // Stream Deck key icon size
@@ -55,7 +59,12 @@ export function compositeAppIcon(
   iconBase64: string,
   options: CompositeOptions = {},
 ): string {
-  const { grayscale = false, badge, badgePosition = "bottom-right" } = options;
+  const {
+    grayscale = false,
+    badge,
+    badgePosition = "bottom-right",
+    border,
+  } = options;
 
   // Build filter definitions
   let filterDefs = "";
@@ -85,12 +94,23 @@ export function compositeAppIcon(
     </g>`;
   }
 
+  // Build border element
+  let borderElement = "";
+
+  if (border) {
+    const halfWidth = border.width / 2;
+    borderElement = `
+    <rect x="${halfWidth}" y="${halfWidth}" width="${ICON_SIZE - border.width}" height="${ICON_SIZE - border.width}"
+          fill="none" stroke="${border.color}" stroke-width="${border.width}" rx="8" ry="8"/>`;
+  }
+
   // Compose final SVG
   const compositeSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="${ICON_SIZE}" height="${ICON_SIZE}">
   <defs>${filterDefs}
   </defs>
   <image href="${iconBase64}" width="${ICON_SIZE}" height="${ICON_SIZE}" ${imageFilter}/>
   ${badgeElement}
+  ${borderElement}
 </svg>`;
 
   // Convert to base64 data URI
@@ -107,7 +127,7 @@ export function getCompositeOptionsFromStateFlags(
   // Check states in priority order
 
   if (stateFlags & SteamStateFlags.AppRunning) {
-    return { badge: "running" };
+    return { border: { color: "#00ff00", width: 6 } };
   }
 
   const updateInProgressFlags =

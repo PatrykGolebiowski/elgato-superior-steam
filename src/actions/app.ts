@@ -28,34 +28,80 @@ type Settings = {
  */
 @action({ UUID: "com.humhunch.superior-steam.run-app" })
 export class App extends SingletonAction<Settings> {
+  private isMonitoringSubscribed = false;
+
   override async onWillAppear(ev: WillAppearEvent<Settings>): Promise<void> {
     const payload = ev.payload.settings;
 
+    // Subscribe to app state changes (only once)
+    if (!this.isMonitoringSubscribed) {
+      this.subscribeToAppStateChanges();
+      this.isMonitoringSubscribed = true;
+    }
+
     // Restore the app icon when the action appears (with state-based effects)
     if (payload.id) {
-      try {
-        const steam = await getSteam();
-        let iconBase64 = await steam.getAppIconBase64(payload.id);
+      await this.updateAppIcon(ev.action, payload.id);
+    }
+  }
 
-        if (iconBase64) {
-          // Apply state-based visual effects
-          const app = steam.getAppById(payload.id);
-          if (app) {
-            const compositeOptions = getCompositeOptionsFromStateFlags(
-              app.stateFlags,
-            );
-            if (compositeOptions) {
-              iconBase64 = compositeAppIcon(iconBase64, compositeOptions);
+  private subscribeToAppStateChanges(): void {
+    getSteam()
+      .then((steam) => {
+        steam.onAppStateChange(async (appId, isRunning) => {
+          streamDeck.logger.info(
+            `[App] App ${appId} ${isRunning ? "started" : "stopped"}`,
+          );
+
+          // Update all actions that are showing this app
+          const actions = this.actions;
+          for (const action of actions) {
+            const settings = await action.getSettings();
+            if (settings.id === appId.toString()) {
+              await this.updateAppIcon(action, settings.id);
             }
           }
-
-          await ev.action.setImage(iconBase64);
-        }
-      } catch (error) {
+        });
+      })
+      .catch((error) => {
         streamDeck.logger.error(
-          `[App] Failed to restore app icon: ${error}`,
+          `[App] Failed to subscribe to app state changes: ${error}`,
         );
+      });
+  }
+
+  private async updateAppIcon(
+    action: any,
+    appId: string,
+  ): Promise<void> {
+    try {
+      const steam = await getSteam();
+      let iconBase64 = await steam.getAppIconBase64(appId);
+
+      if (iconBase64) {
+        // Apply state-based visual effects (including running state)
+        const app = steam.getAppById(appId);
+        const isRunning = steam.isAppRunning(Number(appId));
+
+        // Determine composite options based on manifest state AND running state
+        let compositeOptions = null;
+
+        if (isRunning) {
+          // If running, show green border (highest priority)
+          compositeOptions = { border: { color: "#00ff00", width: 6 } };
+        } else if (app) {
+          // Otherwise check manifest state flags
+          compositeOptions = getCompositeOptionsFromStateFlags(app.stateFlags);
+        }
+
+        if (compositeOptions) {
+          iconBase64 = compositeAppIcon(iconBase64, compositeOptions);
+        }
+
+        await action.setImage(iconBase64);
       }
+    } catch (error) {
+      streamDeck.logger.error(`[App] Failed to update app icon: ${error}`);
     }
   }
 
@@ -75,27 +121,8 @@ export class App extends SingletonAction<Settings> {
         await ev.action.setSettings({ ...payload, name: steamApp.name });
       }
 
-      // Set the app icon (with state-based effects)
-      try {
-        let iconBase64 = await steam.getAppIconBase64(payload.id);
-
-        if (iconBase64) {
-          // Apply state-based visual effects
-          const app = steam.getAppById(payload.id);
-          if (app) {
-            const compositeOptions = getCompositeOptionsFromStateFlags(
-              app.stateFlags,
-            );
-            if (compositeOptions) {
-              iconBase64 = compositeAppIcon(iconBase64, compositeOptions);
-            }
-          }
-
-          await ev.action.setImage(iconBase64);
-        }
-      } catch (error) {
-        streamDeck.logger.error(`[App] Failed to set app icon: ${error}`);
-      }
+      // Set the app icon (with state-based effects including running state)
+      await this.updateAppIcon(ev.action, payload.id);
     }
   }
 

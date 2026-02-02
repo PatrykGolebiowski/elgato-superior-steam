@@ -7,8 +7,11 @@ import decodeIco from "decode-ico";
 import UPNG from "upng-js";
 
 import { PowerShell } from "./powershell";
-
 import { SteamCMD } from "./steam-cmd";
+import {
+  SteamMonitor,
+  RunningAppChangeCallback,
+} from "./steam-monitor";
 
 class SteamUserRegistry {
   private static readonly debugPrefix = "[SteamUserRegistry]";
@@ -506,6 +509,7 @@ export class Steam {
   private users: SteamUsers;
   private protocol: SteamProtocol;
   private api: SteamCMD;
+  private monitor: SteamMonitor;
 
   // Init
   private constructor(
@@ -514,12 +518,14 @@ export class Steam {
     users: SteamUsers,
     protocol: SteamProtocol,
     api: SteamCMD,
+    monitor: SteamMonitor,
   ) {
     this.registry = registry;
     this.library = library;
     this.users = users;
     this.protocol = protocol;
     this.api = api;
+    this.monitor = monitor;
   }
 
   static async create(): Promise<Steam> {
@@ -530,8 +536,13 @@ export class Steam {
     const library = await SteamLibrary.create(registry.steamPath, api);
     const users = await SteamUsers.create(registry.steamPath);
     const protocol = await SteamProtocol.create(registry.steamExe);
+    const monitor = new SteamMonitor(
+      library.installedApps,
+      library.libraryFolders,
+      api,
+    );
 
-    return new Steam(registry, library, users, protocol, api);
+    return new Steam(registry, library, users, protocol, api, monitor);
   }
 
   // Registry
@@ -624,5 +635,28 @@ export class Steam {
   // Library - App lookup
   getAppById(appId: string): SteamApp | undefined {
     return this.library.installedApps.find((a) => a.id.toString() === appId);
+  }
+
+  // Monitoring - Control
+  startMonitoring(): void {
+    this.monitor.start();
+  }
+
+  stopMonitoring(): void {
+    this.monitor.stop();
+  }
+
+  // Monitoring - State queries
+  isAppRunning(appId: number): boolean {
+    return this.monitor.isAppRunning(appId);
+  }
+
+  getRunningAppIds(): number[] {
+    return this.monitor.getRunningAppIds();
+  }
+
+  // Monitoring - Subscribe to changes
+  onAppStateChange(callback: RunningAppChangeCallback): void {
+    this.monitor.onAppStateChange(callback);
   }
 }
