@@ -17,6 +17,7 @@ import {
 type Settings = {
   name: string;
   id: string;
+  params?: string;
 };
 
 /**
@@ -123,9 +124,9 @@ export class RunApp extends SingletonAction<Settings> {
 
     if (settings.id) {
       streamDeck.logger.info(
-        `[RunApp] Launching app: ${settings.name} (${settings.id})`,
+        `[RunApp] Launching app: ${settings.name} (${settings.id})${settings.params ? ` with params: ${settings.params}` : ""}`,
       );
-      steam.launchApp(settings.id);
+      steam.launchApp(settings.id, settings.params);
     } else {
       streamDeck.logger.warn(`[RunApp] No app selected`);
     }

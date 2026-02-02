@@ -373,8 +373,11 @@ class SteamProtocol {
   }
 
   // Launch
-  launchApp(id: string): void {
-    open(`steam://launch/${id}`);
+  launchApp(id: string, params?: string): void {
+    const url = params
+      ? `steam://launch/${id}//${params}`
+      : `steam://launch/${id}`;
+    open(url);
   }
 
   // Helpers
@@ -569,8 +572,8 @@ export class Steam {
     this.protocol.openFriendsList();
   }
 
-  launchApp(id: string): void {
-    this.protocol.launchApp(id);
+  launchApp(id: string, params?: string): void {
+    this.protocol.launchApp(id, params);
   }
 
   // Library - Icons
