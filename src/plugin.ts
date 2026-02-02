@@ -6,7 +6,7 @@ import streamDeck, {
 
 import { BigPicture } from "./actions/big-picture";
 import { LaunchAccount } from "./actions/launch-account";
-import { RunApp } from "./actions/run-app";
+import { App } from "./actions/app";
 import { resetSteam } from "./services/steam-singleton";
 import { Status } from "./actions/status";
 
@@ -16,7 +16,7 @@ streamDeck.logger.setLevel(LogLevel.TRACE);
 // Register actions
 streamDeck.actions.registerAction(new BigPicture());
 streamDeck.actions.registerAction(new Status());
-streamDeck.actions.registerAction(new RunApp());
+streamDeck.actions.registerAction(new App());
 streamDeck.actions.registerAction(new LaunchAccount());
 
 streamDeck.system.onApplicationDidLaunch((ev: ApplicationDidLaunchEvent) => {

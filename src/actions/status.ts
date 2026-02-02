@@ -2,36 +2,29 @@ import { action, KeyDownEvent, KeyUpEvent, SingletonAction, WillAppearEvent, str
 import { getSteam } from "../services/steam-singleton";
 
 type StatusSettings = {
-  currentStatus?: SteamFriendStatus;
+  targetStatus?: SteamFriendStatus;
 };
 
 /**
- * Toggle Steam friend status.
+ * Set Steam friend status.
  */
 @action({ UUID: "com.humhunch.superior-steam.status" })
-export class Status extends SingletonAction {
-  private statusOrder: SteamFriendStatus[] = ["online", "away", "invisible", "offline"];
-
+export class Status extends SingletonAction<StatusSettings> {
   override async onWillAppear(ev: WillAppearEvent<StatusSettings>): Promise<void> {
     const settings = await ev.action.getSettings();
-    const currentStatus = settings.currentStatus || "online";
+    const targetStatus = settings.targetStatus || "online";
 
-    await ev.action.setTitle(this.formatStatus(currentStatus));
+    await ev.action.setTitle(this.formatStatus(targetStatus));
   }
 
   override async onKeyDown(ev: KeyDownEvent<StatusSettings>): Promise<void> {
     const steam = await getSteam();
-
     const settings = await ev.action.getSettings();
-    const currentStatus = settings.currentStatus || "online";
+    const targetStatus = settings.targetStatus || "online";
 
-    // Get next status in cycle
-    const currentIndex = this.statusOrder.indexOf(currentStatus);
-    const nextStatus = this.statusOrder[(currentIndex + 1) % this.statusOrder.length];
-
-    steam.setFriendStatus(nextStatus);
-    await ev.action.setSettings({ currentStatus: nextStatus });
-    await ev.action.setTitle(this.formatStatus(nextStatus));
+    streamDeck.logger.info(`[Status] Setting friend status to: ${targetStatus}`);
+    steam.setFriendStatus(targetStatus);
+    await ev.action.setTitle(this.formatStatus(targetStatus));
   }
 
   private formatStatus(status: string): string {

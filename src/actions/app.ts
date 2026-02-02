@@ -14,17 +14,20 @@ import {
   getCompositeOptionsFromStateFlags,
 } from "../services/image-compositor";
 
+type ActionMode = 'launch' | 'news' | 'properties' | 'store' | 'community' | 'validate';
+
 type Settings = {
   name: string;
   id: string;
   params?: string;
+  actionMode?: ActionMode;
 };
 
 /**
  * Get a list of installed Steam apps.
  */
 @action({ UUID: "com.humhunch.superior-steam.run-app" })
-export class RunApp extends SingletonAction<Settings> {
+export class App extends SingletonAction<Settings> {
   override async onWillAppear(ev: WillAppearEvent<Settings>): Promise<void> {
     const payload = ev.payload.settings;
 
@@ -50,7 +53,7 @@ export class RunApp extends SingletonAction<Settings> {
         }
       } catch (error) {
         streamDeck.logger.error(
-          `[RunApp] Failed to restore app icon: ${error}`,
+          `[App] Failed to restore app icon: ${error}`,
         );
       }
     }
@@ -91,7 +94,7 @@ export class RunApp extends SingletonAction<Settings> {
           await ev.action.setImage(iconBase64);
         }
       } catch (error) {
-        streamDeck.logger.error(`[RunApp] Failed to set app icon: ${error}`);
+        streamDeck.logger.error(`[App] Failed to set app icon: ${error}`);
       }
     }
   }
@@ -122,13 +125,35 @@ export class RunApp extends SingletonAction<Settings> {
     const steam = await getSteam();
     const settings = ev.payload.settings;
 
-    if (settings.id) {
-      streamDeck.logger.info(
-        `[RunApp] Launching app: ${settings.name} (${settings.id})${settings.params ? ` with params: ${settings.params}` : ""}`,
-      );
-      steam.launchApp(settings.id, settings.params);
-    } else {
-      streamDeck.logger.warn(`[RunApp] No app selected`);
+    if (!settings.id) {
+      streamDeck.logger.warn(`[App] No app selected`);
+      return;
+    }
+
+    const actionMode = settings.actionMode ?? 'launch';
+    streamDeck.logger.info(
+      `[App] Action '${actionMode}' on app: ${settings.name} (${settings.id})`,
+    );
+
+    switch (actionMode) {
+      case 'launch':
+        steam.launchApp(settings.id, settings.params);
+        break;
+      case 'news':
+        steam.openAppNews(settings.id);
+        break;
+      case 'properties':
+        steam.openAppProperties(settings.id);
+        break;
+      case 'store':
+        steam.openAppStore(settings.id);
+        break;
+      case 'community':
+        steam.openAppCommunity(settings.id);
+        break;
+      case 'validate':
+        steam.validateApp(settings.id);
+        break;
     }
   }
 }

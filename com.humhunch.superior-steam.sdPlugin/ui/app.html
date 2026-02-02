@@ -1,0 +1,54 @@
+<!doctype html>
+<html>
+  <head lang="en">
+    <meta charset="utf-8" />
+    <script src=".\shared\sdpi-components.js"></script>
+  </head>
+  <body>
+    <sdpi-item label="Action">
+      <sdpi-select id="actionMode" setting="actionMode">
+        <option value="launch">Launch</option>
+        <option value="news">Open news</option>
+        <option value="properties">Open properties</option>
+        <option value="store">Open store page</option>
+        <option value="community">Open community hub</option>
+        <option value="validate">Validate files</option>
+      </sdpi-select>
+    </sdpi-item>
+    <sdpi-item label="App">
+      <sdpi-select
+        id="appSelect"
+        setting="id"
+        datasource="installedApps"
+        loading="Loading installed apps..."
+        placeholder="Please choose from installed apps"
+      >
+      </sdpi-select>
+    </sdpi-item>
+    <sdpi-item label="ID">
+      <sdpi-textfield id="appId" setting="id" disabled></sdpi-textfield>
+    </sdpi-item>
+    <sdpi-item label="Parameters">
+      <sdpi-textfield id="params" setting="params" placeholder="Optional launch parameters"></sdpi-textfield>
+    </sdpi-item>
+
+    <script>
+      const actionMode = document.getElementById('actionMode');
+      const params = document.getElementById('params');
+
+      function updateParamsState() {
+        const value = actionMode.value || 'launch';
+        params.disabled = value !== 'launch';
+      }
+
+      actionMode.addEventListener('change', updateParamsState);
+      actionMode.addEventListener('input', updateParamsState);
+
+      const observer = new MutationObserver(updateParamsState);
+      observer.observe(actionMode, { attributes: true, childList: true, subtree: true });
+
+      // Keep polling to catch async updates
+      setInterval(updateParamsState, 250);
+    </script>
+  </body>
+</html>

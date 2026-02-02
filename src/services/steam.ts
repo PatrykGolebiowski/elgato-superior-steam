@@ -372,12 +372,32 @@ class SteamProtocol {
     open(`steam://open/friends`);
   }
 
-  // Launch
+  // App actions
   launchApp(id: string, params?: string): void {
     const url = params
       ? `steam://launch/${id}//${params}`
       : `steam://launch/${id}`;
     open(url);
+  }
+
+  openAppNews(id: string): void {
+    open(`steam://appnews/${id}`);
+  }
+
+  openAppProperties(id: string): void {
+    open(`steam://gameproperties/${id}`);
+  }
+
+  openAppStore(id: string): void {
+    open(`steam://store/${id}`);
+  }
+
+  openAppCommunity(id: string): void {
+    open(`steam://url/GameHub/${id}`);
+  }
+
+  validateApp(id: string): void {
+    open(`steam://validate/${id}`);
   }
 
   // Helpers
@@ -574,6 +594,26 @@ export class Steam {
 
   launchApp(id: string, params?: string): void {
     this.protocol.launchApp(id, params);
+  }
+
+  openAppNews(id: string): void {
+    this.protocol.openAppNews(id);
+  }
+
+  openAppProperties(id: string): void {
+    this.protocol.openAppProperties(id);
+  }
+
+  openAppStore(id: string): void {
+    this.protocol.openAppStore(id);
+  }
+
+  openAppCommunity(id: string): void {
+    this.protocol.openAppCommunity(id);
+  }
+
+  validateApp(id: string): void {
+    this.protocol.validateApp(id);
   }
 
   // Library - Icons

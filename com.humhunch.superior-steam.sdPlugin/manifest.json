@@ -21,8 +21,8 @@
       "Name": "Status",
       "UUID": "com.humhunch.superior-steam.status",
       "Icon": "imgs/actions/steam/y",
-      "Tooltip": "Manage Steam's status.",
-      "PropertyInspectorPath": "ui/increment-counter.html",
+      "Tooltip": "Set Steam friend status.",
+      "PropertyInspectorPath": "ui/status.html",
       "Controllers": ["Keypad"],
       "States": [
         {
@@ -32,11 +32,11 @@
       ]
     },
     {
-      "Name": "Run app",
+      "Name": "App",
       "UUID": "com.humhunch.superior-steam.run-app",
       "Icon": "imgs/actions/steam/y",
       "Tooltip": "Installed Steam games.",
-      "PropertyInspectorPath": "ui/run-app.html",
+      "PropertyInspectorPath": "ui/app.html",
       "Controllers": ["Keypad"],
       "States": [
         {
