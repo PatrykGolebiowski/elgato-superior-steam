@@ -7,3 +7,10 @@ node_modules/
 
 # IDE files
 .vscode/
+
+# Logs
+logs/*
+
+# AI
+CLAUDE.md
+GEMINI.md
