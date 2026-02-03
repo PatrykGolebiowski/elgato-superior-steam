@@ -15,12 +15,7 @@ const config = {
   input: "src/plugin.ts",
   output: {
     file: `${sdPlugin}/bin/plugin.js`,
-    sourcemap: isWatching,
-    sourcemapPathTransform: (relativeSourcePath, sourcemapPath) => {
-      return url.pathToFileURL(
-        path.resolve(path.dirname(sourcemapPath), relativeSourcePath),
-      ).href;
-    },
+    sourcemap: true, // Always generate source maps for debugging
   },
   plugins: [
     {
@@ -30,7 +25,7 @@ const config = {
       },
     },
     typescript({
-      mapRoot: isWatching ? "./" : undefined,
+      // Remove mapRoot to use default behavior
     }),
     nodeResolve({
       browser: false,
