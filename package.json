@@ -1,7 +1,11 @@
 {
   "scripts": {
     "build": "rollup -c",
-    "watch": "rollup -c -w --watch.onEnd=\"streamdeck restart com.humhunch.superior-steam\""
+    "watch": "rollup -c -w --watch.onEnd=\"streamdeck restart com.humhunch.superior-steam\"",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:run": "vitest run --reporter=verbose",
+    "test:coverage": "vitest run --coverage"
   },
   "type": "module",
   "devDependencies": {
@@ -12,9 +16,12 @@
     "@rollup/plugin-typescript": "^12.1.0",
     "@tsconfig/node20": "^20.1.2",
     "@types/node": "~20.15.0",
+    "@vitest/ui": "^4.0.18",
+    "happy-dom": "^20.5.0",
     "rollup": "^4.0.2",
     "tslib": "^2.6.2",
-    "typescript": "^5.2.2"
+    "typescript": "^5.2.2",
+    "vitest": "^4.0.18"
   },
   "dependencies": {
     "@elgato/streamdeck": "^1.0.0",
