@@ -22,20 +22,6 @@
       ]
     },
     {
-      "Name": "Status",
-      "UUID": "com.humhunch.superior-steam.status",
-      "Icon": "imgs/actions/steam/y",
-      "Tooltip": "Set Steam friend status.",
-      "PropertyInspectorPath": "ui/status.html",
-      "Controllers": ["Keypad"],
-      "States": [
-        {
-          "Image": "imgs/actions/steam/y",
-          "TitleAlignment": "middle"
-        }
-      ]
-    },
-    {
       "Name": "App",
       "UUID": "com.humhunch.superior-steam.run-app",
       "Icon": "imgs/actions/steam/y",

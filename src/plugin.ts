@@ -12,8 +12,6 @@ import {
   resetSteam,
   syncGlobalSettings,
 } from "./services/steam-singleton";
-import { Status } from "./actions/status";
-
 // "trace" logging so that all messages between the Stream Deck, and the plugin are recorded.
 streamDeck.logger.setLevel(LogLevel.TRACE);
 
@@ -22,7 +20,6 @@ const appAction = new App();
 const launchAccountAction = new LaunchAccount();
 
 streamDeck.actions.registerAction(new BigPicture());
-streamDeck.actions.registerAction(new Status());
 streamDeck.actions.registerAction(appAction);
 streamDeck.actions.registerAction(launchAccountAction);
 
