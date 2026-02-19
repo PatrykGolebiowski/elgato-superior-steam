@@ -50,8 +50,10 @@ type SteamApp = {
 };
 
 type PluginGlobalSettings = {
-  installedGames?: SteamGame[];
-  lastLibraryUpdate?: string;
+  steamRunning?: boolean;
+  autoLoginUser?: string;
+  steamPath?: string;
+  lastUpdated?: string;
 };
 
 type SteamUser = {

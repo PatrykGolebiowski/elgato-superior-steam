@@ -79,5 +79,8 @@
     "Version": "20",
     "Debug": "--inspect=9229"
   },
-  "UUID": "com.humhunch.superior-steam"
+  "UUID": "com.humhunch.superior-steam",
+  "ApplicationsToMonitor": {
+    "windows": ["steam.exe"]
+  }
 }

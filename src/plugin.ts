@@ -7,7 +7,11 @@ import streamDeck, {
 import { BigPicture } from "./actions/big-picture";
 import { LaunchAccount } from "./actions/launch-account";
 import { App } from "./actions/app";
-import { resetSteam } from "./services/steam-singleton";
+import {
+  getSteam,
+  resetSteam,
+  syncGlobalSettings,
+} from "./services/steam-singleton";
 import { Status } from "./actions/status";
 
 // "trace" logging so that all messages between the Stream Deck, and the plugin are recorded.
@@ -20,19 +24,36 @@ streamDeck.actions.registerAction(new App());
 streamDeck.actions.registerAction(new LaunchAccount());
 
 streamDeck.system.onApplicationDidLaunch((ev: ApplicationDidLaunchEvent) => {
-  if (ev.application === "steam.exe") {
-    streamDeck.logger.info("Steam launched");
-  }
+  streamDeck.logger.info("Steam launched");
+  syncGlobalSettings({ steamRunning: true });
 });
 
 streamDeck.system.onApplicationDidTerminate(
   (ev: ApplicationDidTerminateEvent) => {
-    if (ev.application === "steam.exe") {
-      streamDeck.logger.info("Steam terminated");
-      resetSteam();
-    }
+    streamDeck.logger.info("Steam terminated");
+    resetSteam();
+    syncGlobalSettings({ steamRunning: false, autoLoginUser: undefined });
   },
 );
 
 // Connect to Stream Deck and initialize Steam library
-streamDeck.connect().then(async () => {});
+streamDeck.connect().then(async () => {
+  try {
+    const steam = await getSteam();
+    const steamRunning = await steam.isSteamRunning();
+    const autoLoginUser = steam.getAutoLoginUser();
+    const steamPath = steam.getSteamPath();
+
+    await syncGlobalSettings({
+      steamRunning,
+      autoLoginUser,
+      steamPath,
+    });
+
+    streamDeck.logger.info(
+      `Steam initialized: running=${steamRunning}, user=${autoLoginUser}`,
+    );
+  } catch (error) {
+    streamDeck.logger.error("Failed to initialize Steam:", error);
+  }
+});
