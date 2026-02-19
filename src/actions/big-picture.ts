@@ -1,4 +1,4 @@
-import { action, KeyDownEvent, KeyUpEvent, SingletonAction, WillAppearEvent } from "@elgato/streamdeck";
+import { action, KeyDownEvent, SingletonAction, WillAppearEvent } from "@elgato/streamdeck";
 import { getSteam } from "../services/steam-singleton";
 
 /**
@@ -7,21 +7,23 @@ import { getSteam } from "../services/steam-singleton";
 @action({ UUID: "com.humhunch.superior-steam.big-picture" })
 export class BigPicture extends SingletonAction {
   override async onWillAppear(ev: WillAppearEvent): Promise<void> {
+    if (!ev.action.isKey()) return;
     const steam = await getSteam();
     const isRunning = await steam.isBigPictureRunning();
-    return ev.action.setTitle(isRunning ? "BP: ON" : "BP: OFF");
+    await ev.action.setState(isRunning ? 1 : 0);
   }
 
   override async onKeyDown(ev: KeyDownEvent): Promise<void> {
+    if (!ev.action.isKey()) return;
     const steam = await getSteam();
     const isBigPicture = await steam.isBigPictureRunning();
 
     if (!isBigPicture) {
       const success = await steam.launchBigPicture();
-      await ev.action.setTitle(success ? "BP: ON" : "BP: FAIL");
+      await ev.action.setState(success ? 1 : 0);
     } else {
       steam.exitBigPicture();
-      await ev.action.setTitle("BP: OFF");
+      await ev.action.setState(0);
     }
   }
 }

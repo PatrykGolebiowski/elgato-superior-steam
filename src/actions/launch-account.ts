@@ -9,6 +9,7 @@ import streamDeck, {
 } from "@elgato/streamdeck";
 import { DataSourcePayload, DataSourceResult } from "../types/sdpi";
 import { getSteam } from "../services/steam-singleton";
+import { compositeAppIcon } from "../services/image-compositor";
 
 type Settings = {
   accountName: string;
@@ -20,6 +21,13 @@ type Settings = {
  */
 @action({ UUID: "com.humhunch.superior-steam.launch-account" })
 export class LaunchAccount extends SingletonAction<Settings> {
+  private applyGrayscaleIfNeeded(avatarBase64: string, steamRunning: boolean): string {
+    if (!steamRunning) {
+      return compositeAppIcon(avatarBase64, { grayscale: true });
+    }
+    return avatarBase64;
+  }
+
   override async onWillAppear(ev: WillAppearEvent<Settings>): Promise<void> {
     const payload = ev.payload.settings;
 
@@ -29,7 +37,9 @@ export class LaunchAccount extends SingletonAction<Settings> {
       const user = steam.getLoggedInUsers().find((user) => user.accountName === payload.accountName);
 
       if (user) {
-        await ev.action.setImage(user.avatarBase64);
+        const globalSettings = await streamDeck.settings.getGlobalSettings<PluginGlobalSettings>();
+        const steamRunning = globalSettings.steamRunning ?? true;
+        await ev.action.setImage(this.applyGrayscaleIfNeeded(user.avatarBase64, steamRunning));
       }
     }
   }
@@ -49,7 +59,24 @@ export class LaunchAccount extends SingletonAction<Settings> {
         }
 
         // Set the avatar image
-        await ev.action.setImage(user.avatarBase64);
+        const globalSettings = await streamDeck.settings.getGlobalSettings<PluginGlobalSettings>();
+        const steamRunning = globalSettings.steamRunning ?? true;
+        await ev.action.setImage(this.applyGrayscaleIfNeeded(user.avatarBase64, steamRunning));
+      }
+    }
+  }
+
+  /**
+   * Refresh all visible LaunchAccount action icons to reflect the current Steam running state.
+   */
+  async refresh(steamRunning: boolean): Promise<void> {
+    const steam = await getSteam();
+    for (const action of this.actions) {
+      const settings = await action.getSettings();
+      if (!settings.accountName) continue;
+      const user = steam.getLoggedInUsers().find((u) => u.accountName === settings.accountName);
+      if (user) {
+        await action.setImage(this.applyGrayscaleIfNeeded(user.avatarBase64, steamRunning));
       }
     }
   }

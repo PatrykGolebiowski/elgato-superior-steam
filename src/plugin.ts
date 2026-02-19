@@ -12,27 +12,35 @@ import {
   resetSteam,
   syncGlobalSettings,
 } from "./services/steam-singleton";
-import { Status } from "./actions/status";
-
 // "trace" logging so that all messages between the Stream Deck, and the plugin are recorded.
 streamDeck.logger.setLevel(LogLevel.TRACE);
 
 // Register actions
+const appAction = new App();
+const launchAccountAction = new LaunchAccount();
+
 streamDeck.actions.registerAction(new BigPicture());
-streamDeck.actions.registerAction(new Status());
-streamDeck.actions.registerAction(new App());
-streamDeck.actions.registerAction(new LaunchAccount());
+streamDeck.actions.registerAction(appAction);
+streamDeck.actions.registerAction(launchAccountAction);
+
+async function refreshAllIcons(steamRunning: boolean): Promise<void> {
+  await Promise.all([
+    appAction.refresh(steamRunning),
+    launchAccountAction.refresh(steamRunning),
+  ]);
+}
 
 streamDeck.system.onApplicationDidLaunch((ev: ApplicationDidLaunchEvent) => {
   streamDeck.logger.info("Steam launched");
-  syncGlobalSettings({ steamRunning: true });
+  syncGlobalSettings({ steamRunning: true }).then(() => refreshAllIcons(true));
 });
 
 streamDeck.system.onApplicationDidTerminate(
   (ev: ApplicationDidTerminateEvent) => {
     streamDeck.logger.info("Steam terminated");
-    resetSteam();
-    syncGlobalSettings({ steamRunning: false, autoLoginUser: undefined });
+    syncGlobalSettings({ steamRunning: false, autoLoginUser: undefined })
+      .then(() => refreshAllIcons(false))
+      .finally(() => resetSteam());
   },
 );
 
