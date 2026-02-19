@@ -9,10 +9,7 @@ import streamDeck, {
 } from "@elgato/streamdeck";
 import { DataSourcePayload, DataSourceResult } from "../types/sdpi";
 import { getSteam } from "../services/steam-singleton";
-import {
-  compositeAppIcon,
-  getCompositeOptionsFromStateFlags,
-} from "../services/image-compositor";
+import { compositeAppIcon } from "../services/image-compositor";
 
 type ActionMode = 'launch' | 'news' | 'properties' | 'store' | 'community' | 'validate';
 
@@ -34,14 +31,6 @@ export class App extends SingletonAction<Settings> {
 
     if (!steamRunning) {
       return compositeAppIcon(iconBase64, { grayscale: true });
-    }
-
-    const app = steam.getAppById(appId);
-    if (app) {
-      const compositeOptions = getCompositeOptionsFromStateFlags(app.stateFlags);
-      if (compositeOptions) {
-        return compositeAppIcon(iconBase64, compositeOptions);
-      }
     }
 
     return iconBase64;
