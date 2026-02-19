@@ -28,6 +28,25 @@ type Settings = {
  */
 @action({ UUID: "com.humhunch.superior-steam.run-app" })
 export class App extends SingletonAction<Settings> {
+  private async buildIcon(steam: Awaited<ReturnType<typeof getSteam>>, appId: string, steamRunning: boolean): Promise<string | null> {
+    let iconBase64 = await steam.getAppIconBase64(appId);
+    if (!iconBase64) return null;
+
+    if (!steamRunning) {
+      return compositeAppIcon(iconBase64, { grayscale: true });
+    }
+
+    const app = steam.getAppById(appId);
+    if (app) {
+      const compositeOptions = getCompositeOptionsFromStateFlags(app.stateFlags);
+      if (compositeOptions) {
+        return compositeAppIcon(iconBase64, compositeOptions);
+      }
+    }
+
+    return iconBase64;
+  }
+
   override async onWillAppear(ev: WillAppearEvent<Settings>): Promise<void> {
     const payload = ev.payload.settings;
 
@@ -35,20 +54,11 @@ export class App extends SingletonAction<Settings> {
     if (payload.id) {
       try {
         const steam = await getSteam();
-        let iconBase64 = await steam.getAppIconBase64(payload.id);
+        const globalSettings = await streamDeck.settings.getGlobalSettings<PluginGlobalSettings>();
+        const steamRunning = globalSettings.steamRunning ?? true;
 
+        const iconBase64 = await this.buildIcon(steam, payload.id, steamRunning);
         if (iconBase64) {
-          // Apply state-based visual effects
-          const app = steam.getAppById(payload.id);
-          if (app) {
-            const compositeOptions = getCompositeOptionsFromStateFlags(
-              app.stateFlags,
-            );
-            if (compositeOptions) {
-              iconBase64 = compositeAppIcon(iconBase64, compositeOptions);
-            }
-          }
-
           await ev.action.setImage(iconBase64);
         }
       } catch (error) {
@@ -77,24 +87,34 @@ export class App extends SingletonAction<Settings> {
 
       // Set the app icon (with state-based effects)
       try {
-        let iconBase64 = await steam.getAppIconBase64(payload.id);
+        const globalSettings = await streamDeck.settings.getGlobalSettings<PluginGlobalSettings>();
+        const steamRunning = globalSettings.steamRunning ?? true;
 
+        const iconBase64 = await this.buildIcon(steam, payload.id, steamRunning);
         if (iconBase64) {
-          // Apply state-based visual effects
-          const app = steam.getAppById(payload.id);
-          if (app) {
-            const compositeOptions = getCompositeOptionsFromStateFlags(
-              app.stateFlags,
-            );
-            if (compositeOptions) {
-              iconBase64 = compositeAppIcon(iconBase64, compositeOptions);
-            }
-          }
-
           await ev.action.setImage(iconBase64);
         }
       } catch (error) {
         streamDeck.logger.error(`[App] Failed to set app icon: ${error}`);
+      }
+    }
+  }
+
+  /**
+   * Refresh all visible App action icons to reflect the current Steam running state.
+   */
+  async refresh(steamRunning: boolean): Promise<void> {
+    const steam = await getSteam();
+    for (const action of this.actions) {
+      const settings = await action.getSettings();
+      if (!settings.id) continue;
+      try {
+        const iconBase64 = await this.buildIcon(steam, settings.id, steamRunning);
+        if (iconBase64) {
+          await action.setImage(iconBase64);
+        }
+      } catch (error) {
+        streamDeck.logger.error(`[App] Failed to refresh icon for app ${settings.id}: ${error}`);
       }
     }
   }
