@@ -6,13 +6,17 @@
     {
       "Name": "Big picture",
       "UUID": "com.humhunch.superior-steam.big-picture",
-      "Icon": "imgs/actions/steam/x",
+      "Icon": "imgs/actions/steam/big_screen_off",
       "Tooltip": "Manage Steam's Big Picture mode.",
       "PropertyInspectorPath": "ui/increment-counter.html",
       "Controllers": ["Keypad"],
       "States": [
         {
-          "Image": "imgs/actions/steam/deck_boot",
+          "Image": "imgs/actions/steam/big_screen_off",
+          "TitleAlignment": "middle"
+        },
+        {
+          "Image": "imgs/actions/steam/big_screen_on",
           "TitleAlignment": "middle"
         }
       ]
