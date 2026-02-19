@@ -16,3 +16,6 @@ logs/*
 CLAUDE.md
 /.claude
 GEMINI.md
+
+# Temp documents
+plans/
